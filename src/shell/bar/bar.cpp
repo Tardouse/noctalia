@@ -38,7 +38,8 @@
 namespace {
 
   constexpr float kCircularCapsuleNarrowWidthEpsilon = 1.0f;
-  constexpr float kAutoHideSlideExtraPx = 16.0f;
+  constexpr std::int32_t kAutoHideTriggerPx = 3;
+  constexpr float kAutoHideSlideExtraPx = 4.0f;
   [[nodiscard]] int barAutoHideEdgeGutter(const BarConfig& cfg) noexcept {
     if (!cfg.autoHide || cfg.marginEdge <= 0) {
       return 0;
@@ -65,8 +66,26 @@ namespace {
     return barConfig.thickness;
   }
 
-  [[nodiscard]] std::vector<InputRect> barAutoHideSurfaceInputRegion(int surfW, int surfH) {
-    return {InputRect{0, 0, surfW, surfH}};
+  [[nodiscard]] std::vector<InputRect> barAutoHideSurfaceInputRegion(const BarConfig& cfg, int surfW, int surfH,
+                                                                     bool fullSurface) {
+    if (surfW <= 0 || surfH <= 0) {
+      return {};
+    }
+    if (fullSurface) {
+      return {InputRect{0, 0, surfW, surfH}};
+    }
+
+    const int strip = std::min(kAutoHideTriggerPx, cfg.position == "left" || cfg.position == "right" ? surfW : surfH);
+    if (cfg.position == "bottom") {
+      return {InputRect{0, surfH - strip, surfW, strip}};
+    }
+    if (cfg.position == "left") {
+      return {InputRect{0, 0, strip, surfH}};
+    }
+    if (cfg.position == "right") {
+      return {InputRect{surfW - strip, 0, strip, surfH}};
+    }
+    return {InputRect{0, 0, surfW, strip}};
   }
 
   bool pointInsideNode(const Node* node, float sceneX, float sceneY) {
@@ -1681,7 +1700,8 @@ void Bar::syncBarAutoHideInputRegion(BarInstance& instance) const {
     return;
   }
   if (instance.barConfig.autoHide) {
-    instance.surface->setInputRegion(barAutoHideSurfaceInputRegion(surfW, surfH));
+    const bool fullSurface = instance.pointerInside || instance.attachedPopupCount > 0 || instance.hideOpacity > 0.5f;
+    instance.surface->setInputRegion(barAutoHideSurfaceInputRegion(instance.barConfig, surfW, surfH, fullSurface));
     return;
   }
   instance.surface->setInputRegion(
@@ -1702,7 +1722,9 @@ void Bar::revealAutoHideBar(BarInstance& instance) {
                                 syncBarSlideLayerTransform(*inst);
                                 syncBarSurfaceChrome(*inst);
                               });
-  syncBarAutoHideInputRegion(instance);
+  const int surfW = static_cast<int>(instance.surface->width());
+  const int surfH = static_cast<int>(instance.surface->height());
+  instance.surface->setInputRegion(barAutoHideSurfaceInputRegion(instance.barConfig, surfW, surfH, true));
   syncBarSurfaceChrome(instance);
   instance.surface->requestRedraw();
 }
@@ -1760,6 +1782,7 @@ void Bar::startHideFadeOut(BarInstance& instance) {
         }
         syncBarAutoHideInputRegion(*inst);
         syncBarSurfaceChrome(*inst);
+        inst->surface->requestRedraw();
       });
   syncBarSurfaceChrome(instance);
   if (instance.surface != nullptr) {
