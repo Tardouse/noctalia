@@ -19,6 +19,7 @@ enum class NotificationEvent {
 struct NotificationHistoryEntry {
   Notification notification;
   bool active = true;
+  bool seen = false;
   std::optional<CloseReason> closeReason;
   std::uint64_t eventSerial = 0;
 };
@@ -120,6 +121,8 @@ private:
   void schedulePersistHistory();
   void persistHistoryToDisk();
   void emitPendingDBusClose(uint32_t id, CloseReason reason);
+  [[nodiscard]] bool computeHasUnreadNotificationHistory() const noexcept;
+  void notifyUnreadStateChangedIfNeeded(bool previousUnreadState);
 
   bool m_persistScheduled = false;
 
@@ -137,6 +140,5 @@ private:
   uint32_t m_nextId{1};
   std::uint64_t m_changeSerial{0};
   bool m_doNotDisturb = false;
-  bool m_unreadSinceHistoryVisit = false;
   class SoundPlayer* m_soundPlayer = nullptr;
 };

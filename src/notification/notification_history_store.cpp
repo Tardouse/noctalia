@@ -650,6 +650,7 @@ bool loadNotificationHistoryFromFile(const std::filesystem::path& path, std::deq
     NotificationHistoryEntry he;
     he.notification = notificationFromJson(item.at("notification"), path);
     he.active = item.value("active", false);
+    he.seen = item.value("seen", true);
     if (item.contains("close_reason") && !item["close_reason"].is_null()) {
       const auto crs = item["close_reason"].get<std::string>();
       he.closeReason = closeReasonFrom(crs);
@@ -686,6 +687,7 @@ bool saveNotificationHistoryToFile(const std::filesystem::path& path,
     nlohmann::json je;
     je["notification"] = notificationToJson(he.notification, path);
     je["active"] = he.active;
+    je["seen"] = he.seen;
     if (he.closeReason.has_value()) {
       je["close_reason"] = std::string(closeReasonStr(*he.closeReason));
     } else {

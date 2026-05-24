@@ -7,6 +7,7 @@
 #include "util/file_utils.h"
 #include "util/string_utils.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string_view>
 
@@ -99,13 +100,16 @@ void NotificationManager::rebuildHistoryIndex() {
 
 void NotificationManager::upsertHistory(const Notification& notification, bool active,
                                         std::optional<CloseReason> closeReason) {
+  bool seen = false;
   if (const auto it = m_historyIndex.find(notification.id); it != m_historyIndex.end()) {
+    seen = m_history[it->second].seen;
     m_history.erase(m_history.begin() + static_cast<std::ptrdiff_t>(it->second));
   }
 
   m_history.push_back(NotificationHistoryEntry{
       .notification = notification,
       .active = active,
+      .seen = seen,
       .closeReason = closeReason,
       .eventSerial = ++m_changeSerial,
   });
@@ -129,6 +133,20 @@ int NotificationManager::addEventCallback(EventCallback callback) {
 
 void NotificationManager::removeEventCallback(int token) {
   std::erase_if(m_eventCallbacks, [token](const auto& pair) { return pair.first == token; });
+}
+
+bool NotificationManager::computeHasUnreadNotificationHistory() const noexcept {
+  return std::any_of(m_history.begin(), m_history.end(),
+                     [](const NotificationHistoryEntry& entry) { return !entry.seen; });
+}
+
+void NotificationManager::notifyUnreadStateChangedIfNeeded(bool previousUnreadState) {
+  if (m_stateCallback == nullptr) {
+    return;
+  }
+  if (computeHasUnreadNotificationHistory() != previousUnreadState) {
+    m_stateCallback();
+  }
 }
 
 uint32_t NotificationManager::addOrReplace(uint32_t replacesId, std::string appName, std::string summary,
@@ -174,7 +192,9 @@ uint32_t NotificationManager::addOrReplace(uint32_t replacesId, std::string appN
 
       logNotification(n, "updated");
       if (shouldTrackHistory(n.origin, n.urgency)) {
+        const bool hadUnreadBefore = computeHasUnreadNotificationHistory();
         upsertHistory(n, true, std::nullopt);
+        notifyUnreadStateChangedIfNeeded(hadUnreadBefore);
       } else {
         removeHistoryEntry(n.id);
       }
@@ -223,8 +243,9 @@ uint32_t NotificationManager::addOrReplace(uint32_t replacesId, std::string appN
   const auto& n = m_notifications.back();
   logNotification(n, "added");
   if (shouldTrackHistory(n.origin, n.urgency)) {
+    const bool hadUnreadBefore = computeHasUnreadNotificationHistory();
     upsertHistory(n, true, std::nullopt);
-    m_unreadSinceHistoryVisit = true;
+    notifyUnreadStateChangedIfNeeded(hadUnreadBefore);
   }
 
   for (auto& [token, cb] : m_eventCallbacks) {
@@ -338,6 +359,9 @@ bool NotificationManager::close(uint32_t id, CloseReason reason) {
 
   const size_t index = it->second;
   const Notification closed = m_notifications[index];
+  const bool hadUnreadBefore = computeHasUnreadNotificationHistory();
+  const bool historyHandledUnreadChange =
+      shouldTrackHistory(closed.origin, closed.urgency) && reason == CloseReason::Dismissed;
   const char* reasonStr = (reason == CloseReason::Expired)     ? "expired"
                           : (reason == CloseReason::Dismissed) ? "dismissed"
                                                                : "closed";
@@ -368,6 +392,10 @@ bool NotificationManager::close(uint32_t id, CloseReason reason) {
     m_closeCallback(id, reason);
   }
 
+  if (!historyHandledUnreadChange) {
+    notifyUnreadStateChangedIfNeeded(hadUnreadBefore);
+  }
+
   return true;
 }
 
@@ -383,6 +411,7 @@ void NotificationManager::removeHistoryEntry(uint32_t id, std::optional<CloseRea
     return;
   }
 
+  const bool hadUnreadBefore = computeHasUnreadNotificationHistory();
   const CloseReason reason =
       dbusCloseReason.value_or(m_history[it->second].closeReason.value_or(CloseReason::Dismissed));
   emitPendingDBusClose(id, reason);
@@ -390,6 +419,7 @@ void NotificationManager::removeHistoryEntry(uint32_t id, std::optional<CloseRea
   ++m_changeSerial;
   rebuildHistoryIndex();
   schedulePersistHistory();
+  notifyUnreadStateChangedIfNeeded(hadUnreadBefore);
 }
 
 void NotificationManager::clearHistory() {
@@ -486,16 +516,20 @@ void NotificationManager::setStateCallback(StateCallback callback) { m_stateCall
 
 void NotificationManager::setSoundPlayer(SoundPlayer* soundPlayer) { m_soundPlayer = soundPlayer; }
 
-bool NotificationManager::hasUnreadNotificationHistory() const noexcept { return m_unreadSinceHistoryVisit; }
+bool NotificationManager::hasUnreadNotificationHistory() const noexcept {
+  return computeHasUnreadNotificationHistory();
+}
 
 void NotificationManager::markNotificationHistorySeen() {
-  if (!m_unreadSinceHistoryVisit) {
+  const bool hadUnreadBefore = computeHasUnreadNotificationHistory();
+  if (!hadUnreadBefore) {
     return;
   }
-  m_unreadSinceHistoryVisit = false;
-  if (m_stateCallback) {
-    m_stateCallback();
+  for (auto& entry : m_history) {
+    entry.seen = true;
   }
+  schedulePersistHistory();
+  notifyUnreadStateChangedIfNeeded(hadUnreadBefore);
 }
 
 void NotificationManager::schedulePersistHistory() {
