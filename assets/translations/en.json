@@ -1744,7 +1744,7 @@
           "description": "Layout direction for OSD popups"
         },
         "osd-scale": {
-          "label": "Size",
+          "label": "Scale",
           "description": "Scale OSD popups relative to the shell UI scale (1.0 keeps the default size)"
         },
         "osd-background-opacity": {
