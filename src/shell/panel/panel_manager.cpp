@@ -16,6 +16,7 @@
 #include "ui/controls/select_dropdown_popup.h"
 #include "ui/palette.h"
 #include "ui/style.h"
+#include "util/string_utils.h"
 #include "wayland/wayland_connection.h"
 #include "wayland/wayland_seat.h"
 
@@ -1892,26 +1893,111 @@ void PanelManager::prepareFrame(bool needsUpdate, bool needsLayout) {
 }
 
 void PanelManager::registerIpc(IpcService& ipc) {
+  auto parseOpenArgs = [](std::string_view rawArgs, std::string_view command, std::string& panelId,
+                          std::string& context) -> std::optional<std::string> {
+    const std::string args = StringUtils::trim(rawArgs);
+    if (args.empty()) {
+      return "error: " + std::string(command) + " requires a panel id\n";
+    }
+
+    const auto sep = args.find_first_of(" \t\n\r\f\v");
+    if (sep == std::string::npos) {
+      panelId = args;
+      context.clear();
+      return std::nullopt;
+    }
+
+    panelId = args.substr(0, sep);
+    context = StringUtils::trimLeftView(std::string_view(args).substr(sep + 1));
+    return std::nullopt;
+  };
+
+  auto unknownPanelError = [this](std::string_view panelId) -> std::string {
+    std::vector<std::string> ids;
+    ids.reserve(m_panels.size());
+    for (const auto& entry : m_panels) {
+      ids.push_back(entry.first);
+    }
+    std::sort(ids.begin(), ids.end());
+
+    std::string error = "error: unknown panel \"" + std::string(panelId) + "\"";
+    if (!ids.empty()) {
+      error += " (available: " + StringUtils::join(ids, ", ") + ")";
+    }
+    error += '\n';
+    return error;
+  };
+
+  auto preferredOutput = [this]() -> wl_output* {
+    return m_platform != nullptr ? m_platform->preferredInteractiveOutput(std::chrono::milliseconds(1200)) : nullptr;
+  };
+
   ipc.registerHandler(
       "panel-toggle",
-      [this](const std::string& args) -> std::string {
-        if (args.empty()) {
-          return "error: panel-toggle requires a panel id\n";
+      [this, parseOpenArgs, unknownPanelError, preferredOutput](const std::string& args) -> std::string {
+        std::string panelId;
+        std::string context;
+        if (auto error = parseOpenArgs(args, "panel-toggle", panelId, context)) {
+          return *error;
         }
-        const auto sep = args.find(' ');
-        if (sep == std::string::npos) {
-          togglePanel(args);
+        if (!m_panels.contains(panelId)) {
+          return unknownPanelError(panelId);
+        }
+        if (context.empty()) {
+          togglePanel(panelId);
         } else {
-          const std::string panelId = args.substr(0, sep);
-          const std::string_view context = std::string_view(args).substr(sep + 1);
-          wl_output* output =
-              m_platform != nullptr ? m_platform->preferredInteractiveOutput(std::chrono::milliseconds(1200)) : nullptr;
-          togglePanel(panelId, PanelOpenRequest{.output = output, .context = context});
+          togglePanel(panelId, PanelOpenRequest{.output = preferredOutput(), .context = context});
         }
         return "ok\n";
       },
       "panel-toggle <id> [context]",
       "Toggle a panel by id, optionally with context (e.g. launcher /emo, control-center audio)"
+  );
+
+  ipc.registerHandler(
+      "panel-open",
+      [this, parseOpenArgs, unknownPanelError, preferredOutput](const std::string& args) -> std::string {
+        std::string panelId;
+        std::string context;
+        if (auto error = parseOpenArgs(args, "panel-open", panelId, context)) {
+          return *error;
+        }
+        if (!m_panels.contains(panelId)) {
+          return unknownPanelError(panelId);
+        }
+
+        if (isOpen() && !m_closing && m_activePanelId == panelId) {
+          if (!context.empty() && m_activePanel != nullptr) {
+            m_activePanel->onOpen(context);
+            refresh();
+          }
+          return "ok\n";
+        }
+
+        openPanel(panelId, PanelOpenRequest{.output = preferredOutput(), .context = context});
+        return "ok\n";
+      },
+      "panel-open <id> [context]",
+      "Open a panel by id, optionally with context (e.g. launcher /emo, control-center audio)"
+  );
+
+  ipc.registerHandler(
+      "panel-close",
+      [this, unknownPanelError](const std::string& args) -> std::string {
+        const std::string panelId = StringUtils::trim(args);
+        if (!panelId.empty() && StringUtils::splitWhitespace(panelId).size() != 1) {
+          return "error: panel-close accepts at most one panel id\n";
+        }
+        if (!panelId.empty() && !m_panels.contains(panelId)) {
+          return unknownPanelError(panelId);
+        }
+
+        if (panelId.empty() || isOpenPanel(panelId)) {
+          closePanel();
+        }
+        return "ok\n";
+      },
+      "panel-close [id]", "Close the active panel, or close the named panel if it is active"
   );
 
   ipc.registerHandler(
