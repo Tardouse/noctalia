@@ -397,9 +397,7 @@ namespace {
         && a.screenTimeEnabled == b.screenTimeEnabled
         && a.clipboardAutoPaste == b.clipboardAutoPaste
         && a.clipboardImageActionCommand == b.clipboardImageActionCommand
-        && a.shadow.blur == b.shadow.blur
-        && a.shadow.offsetX == b.shadow.offsetX
-        && a.shadow.offsetY == b.shadow.offsetY
+        && a.shadow.direction == b.shadow.direction
         && nearlyEqual(a.shadow.alpha, b.shadow.alpha)
         && a.panel.backgroundBlur == b.panel.backgroundBlur
         && a.panel.borders == b.panel.borders

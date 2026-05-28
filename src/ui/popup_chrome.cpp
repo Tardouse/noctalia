@@ -106,9 +106,9 @@ namespace popup_chrome {
             shadow, backgroundOpacity, shell::surface_shadow::Shape{.radius = Radii{radius, radius, radius, radius}}
         )
     );
+    const auto offset = shadowDirectionOffset(shadow.direction);
     shadowNode->setPosition(
-        geometry.contentX() + static_cast<float>(shadow.offsetX),
-        geometry.contentY() + static_cast<float>(shadow.offsetY)
+        geometry.contentX() + static_cast<float>(offset.x), geometry.contentY() + static_cast<float>(offset.y)
     );
     shadowNode->setFrameSize(geometry.contentWidth, geometry.contentHeight);
     shadowNode->setZIndex(-1);

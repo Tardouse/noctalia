@@ -470,6 +470,59 @@ constexpr EnumOption<PasswordMaskStyle> kPasswordMaskStyles[] = {
     {PasswordMaskStyle::RandomIcons, "random", "settings.options.shell.password-style.random-icons"},
 };
 
+enum class ShadowDirection : std::uint8_t {
+  Center = 0,
+  Down = 1,
+  Up = 2,
+  Left = 3,
+  Right = 4,
+  DownLeft = 5,
+  DownRight = 6,
+  UpLeft = 7,
+  UpRight = 8,
+};
+
+constexpr EnumOption<ShadowDirection> kShadowDirections[] = {
+    {ShadowDirection::Center, "center", "settings.options.shell.shadow-direction.center"},
+    {ShadowDirection::Down, "down", "settings.options.shell.shadow-direction.down"},
+    {ShadowDirection::Up, "up", "settings.options.shell.shadow-direction.up"},
+    {ShadowDirection::Left, "left", "settings.options.shell.shadow-direction.left"},
+    {ShadowDirection::Right, "right", "settings.options.shell.shadow-direction.right"},
+    {ShadowDirection::DownLeft, "down_left", "settings.options.shell.shadow-direction.down-left"},
+    {ShadowDirection::DownRight, "down_right", "settings.options.shell.shadow-direction.down-right"},
+    {ShadowDirection::UpLeft, "up_left", "settings.options.shell.shadow-direction.up-left"},
+    {ShadowDirection::UpRight, "up_right", "settings.options.shell.shadow-direction.up-right"},
+};
+
+struct ShadowDirectionOffset {
+  std::int32_t x;
+  std::int32_t y;
+};
+
+constexpr ShadowDirectionOffset shadowDirectionOffset(ShadowDirection dir) noexcept {
+  switch (dir) {
+  case ShadowDirection::Center:
+    return {0, 0};
+  case ShadowDirection::Down:
+    return {0, 2};
+  case ShadowDirection::Up:
+    return {0, -2};
+  case ShadowDirection::Left:
+    return {-2, 0};
+  case ShadowDirection::Right:
+    return {2, 0};
+  case ShadowDirection::DownLeft:
+    return {-2, 2};
+  case ShadowDirection::DownRight:
+    return {2, 2};
+  case ShadowDirection::UpLeft:
+    return {-2, -2};
+  case ShadowDirection::UpRight:
+    return {2, -2};
+  }
+  return {0, 2};
+}
+
 enum class PanelTransparencyMode : std::uint8_t {
   Solid = 0,
   Soft = 1,
@@ -527,9 +580,7 @@ struct ShellConfig {
   };
 
   struct ShadowConfig {
-    std::int32_t blur = 12;
-    std::int32_t offsetX = 0;
-    std::int32_t offsetY = 6;
+    ShadowDirection direction = ShadowDirection::Down;
     float alpha = 0.55f;
 
     bool operator==(const ShadowConfig&) const = default;

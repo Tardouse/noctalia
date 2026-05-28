@@ -1433,14 +1433,10 @@ void ConfigService::parseTableInto(const toml::table& tbl, Config& config, bool 
       }
     }
     if (const auto* shadowTbl = (*shellTbl)["shadow"].as_table()) {
-      if (auto v = (*shadowTbl)["blur"].value<int64_t>()) {
-        shell.shadow.blur = std::clamp(static_cast<std::int32_t>(*v), 0, 100);
-      }
-      if (auto v = (*shadowTbl)["offset_x"].value<int64_t>()) {
-        shell.shadow.offsetX = std::clamp(static_cast<std::int32_t>(*v), -40, 40);
-      }
-      if (auto v = (*shadowTbl)["offset_y"].value<int64_t>()) {
-        shell.shadow.offsetY = std::clamp(static_cast<std::int32_t>(*v), -40, 40);
+      if (auto v = (*shadowTbl)["direction"].value<std::string>()) {
+        if (auto parsed = enumFromKey(kShadowDirections, *v)) {
+          shell.shadow.direction = *parsed;
+        }
       }
       if (auto v = finiteDouble((*shadowTbl)["alpha"])) {
         shell.shadow.alpha = std::clamp(static_cast<float>(*v), 0.0f, 1.0f);

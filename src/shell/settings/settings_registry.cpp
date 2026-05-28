@@ -424,19 +424,9 @@ namespace settings {
         SliderSetting{cfg.shell.animation.speed, 0.1f, 4.0f, 0.05f, false}, "motion"
     ));
     entries.push_back(makeEntry(
-        "appearance", "effects", tr("settings.schema.shared.shadow-blur.label"),
-        tr("settings.schema.appearance.global-shadow-blur.description"), {"shell", "shadow", "blur"},
-        SliderSetting{cfg.shell.shadow.blur, 0.0f, 100.0f, 1.0f, true}, "shadow depth"
-    ));
-    entries.push_back(makeEntry(
-        "appearance", "effects", tr("settings.schema.shared.shadow-x.label"),
-        tr("settings.schema.appearance.global-shadow-x.description"), {"shell", "shadow", "offset_x"},
-        SliderSetting{cfg.shell.shadow.offsetX, -40.0f, 40.0f, 1.0f, true}, "shadow offset", true
-    ));
-    entries.push_back(makeEntry(
-        "appearance", "effects", tr("settings.schema.shared.shadow-y.label"),
-        tr("settings.schema.appearance.global-shadow-y.description"), {"shell", "shadow", "offset_y"},
-        SliderSetting{cfg.shell.shadow.offsetY, -40.0f, 40.0f, 1.0f, true}, "shadow offset", true
+        "appearance", "effects", tr("settings.schema.shared.shadow-direction.label"),
+        tr("settings.schema.appearance.global-shadow-direction.description"), {"shell", "shadow", "direction"},
+        enumSelect(kShadowDirections, cfg.shell.shadow.direction), "shadow direction"
     ));
     entries.push_back(makeEntry(
         "appearance", "effects", tr("settings.schema.shared.shadow-alpha.label"),

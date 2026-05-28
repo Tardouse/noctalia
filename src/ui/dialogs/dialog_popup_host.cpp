@@ -421,9 +421,8 @@ void DialogPopupHost::syncSceneGeometryFromSurface() {
   const float panelH = m_chrome.contentHeight;
   if (m_panelShadow != nullptr) {
     const ShellConfig::ShadowConfig shadow = popupShadowConfig(m_config);
-    m_panelShadow->setPosition(
-        panelX + static_cast<float>(shadow.offsetX), panelY + static_cast<float>(shadow.offsetY)
-    );
+    const auto offset = shadowDirectionOffset(shadow.direction);
+    m_panelShadow->setPosition(panelX + static_cast<float>(offset.x), panelY + static_cast<float>(offset.y));
     m_panelShadow->setFrameSize(panelW, panelH);
   }
   if (m_bgNode != nullptr) {

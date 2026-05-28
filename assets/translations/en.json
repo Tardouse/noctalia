@@ -1016,6 +1016,17 @@
           "attached": "Attached",
           "floating": "Floating",
           "centered": "Centered"
+        },
+        "shadow-direction": {
+          "center": "Center",
+          "down": "Down",
+          "up": "Up",
+          "left": "Left",
+          "right": "Right",
+          "down-left": "Down Left",
+          "down-right": "Down Right",
+          "up-left": "Up Left",
+          "up-right": "Up Right"
         }
       },
       "control-center": {
@@ -1576,14 +1587,8 @@
         "contact-shadow": {
           "label": "Contact Shadow"
         },
-        "shadow-blur": {
-          "label": "Shadow Blur"
-        },
-        "shadow-x": {
-          "label": "Shadow X Offset"
-        },
-        "shadow-y": {
-          "label": "Shadow Y Offset"
+        "shadow-direction": {
+          "label": "Shadow Direction"
         },
         "shadow-alpha": {
           "label": "Shadow Opacity"
@@ -1646,14 +1651,8 @@
           "label": "Language",
           "description": "Override automatic locale detection"
         },
-        "global-shadow-blur": {
-          "description": "Global surface shadow blur radius"
-        },
-        "global-shadow-x": {
-          "description": "Global horizontal surface shadow offset"
-        },
-        "global-shadow-y": {
-          "description": "Global vertical surface shadow offset"
+        "global-shadow-direction": {
+          "description": "Direction the shadow is cast from surfaces"
         },
         "global-shadow-alpha": {
           "description": "Global surface shadow opacity"

@@ -145,8 +145,9 @@ namespace shell::dock {
     float contentRight = panel.panelX + panel.panelW;
     float contentBottom = panel.panelY + panel.panelH;
     if (shell::surface_shadow::enabled(cfg.shadow, shadow)) {
-      const float sx = panel.panelX + static_cast<float>(shadow.offsetX);
-      const float sy = panel.panelY + static_cast<float>(shadow.offsetY);
+      const auto offset = shadowDirectionOffset(shadow.direction);
+      const float sx = panel.panelX + static_cast<float>(offset.x);
+      const float sy = panel.panelY + static_cast<float>(offset.y);
       contentLeft = std::min(contentLeft, sx);
       contentTop = std::min(contentTop, sy);
       contentRight = std::max(contentRight, sx + panel.panelW);

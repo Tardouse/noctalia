@@ -532,8 +532,9 @@ namespace {
     const float barAreaW = barVisual.width;
     const float barAreaH = barVisual.height;
     const float bgOpacity = std::clamp(instance.barConfig.backgroundOpacity, 0.0f, 1.0f);
-    const float shadowX = barVisual.x + static_cast<float>(shadowConfig.offsetX);
-    const float shadowY = barVisual.y + static_cast<float>(shadowConfig.offsetY);
+    const auto shadowOff = shadowDirectionOffset(shadowConfig.direction);
+    const float shadowX = barVisual.x + static_cast<float>(shadowOff.x);
+    const float shadowY = barVisual.y + static_cast<float>(shadowOff.y);
     RoundedRectStyle shadowStyle =
         shell::surface_shadow::style(shadowConfig, bgOpacity, shell::surface_shadow::Shape{.radius = barRadii});
 
@@ -1961,11 +1962,12 @@ void Bar::buildScene(BarInstance& instance, std::uint32_t width, std::uint32_t h
   const float padding = static_cast<float>(instance.barConfig.padding);
   const float widgetSpacing = static_cast<float>(instance.barConfig.widgetSpacing);
   const auto& shadowConfig = m_config->config().shell.shadow;
+  const auto shadowOffset = shadowDirectionOffset(shadowConfig.direction);
   const float shadowSize = shell::surface_shadow::enabled(instance.barConfig.shadow, shadowConfig)
-      ? static_cast<float>(shadowConfig.blur)
+      ? static_cast<float>(shell::surface_shadow::kBlurRadius)
       : 0.0f;
-  const float shadowOffsetX = static_cast<float>(shadowConfig.offsetX);
-  const float shadowOffsetY = static_cast<float>(shadowConfig.offsetY);
+  const float shadowOffsetX = static_cast<float>(shadowOffset.x);
+  const float shadowOffsetY = static_cast<float>(shadowOffset.y);
   const bool isBottom = instance.barConfig.position == "bottom";
   const bool isRight = instance.barConfig.position == "right";
   const bool isVertical = (instance.barConfig.position == "left" || instance.barConfig.position == "right");

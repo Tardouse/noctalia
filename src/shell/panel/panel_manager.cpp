@@ -1784,8 +1784,9 @@ void PanelManager::buildScene(std::uint32_t width, std::uint32_t height) {
     const bool panelShadow =
         m_config->config().shell.panel.shadow && shell::surface_shadow::enabled(true, shadowConfig);
     m_panelShadowNode->setVisible(panelShadow);
-    const float shadowOffsetX = static_cast<float>(shadowConfig.offsetX);
-    const float shadowOffsetY = static_cast<float>(shadowConfig.offsetY);
+    const auto shadowOff = shadowDirectionOffset(shadowConfig.direction);
+    const float shadowOffsetX = static_cast<float>(shadowOff.x);
+    const float shadowOffsetY = static_cast<float>(shadowOff.y);
     m_panelShadowNode->setPosition(bgX + shadowOffsetX, bgY + shadowOffsetY);
     m_panelShadowNode->setSize(bgW, bgH);
     if (!m_attachedToBar && panelShadow) {

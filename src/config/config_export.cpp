@@ -331,9 +331,7 @@ namespace config_export {
       table.insert_or_assign("animation", std::move(animation));
 
       toml::table shadow;
-      shadow.insert_or_assign("blur", static_cast<std::int64_t>(shell.shadow.blur));
-      shadow.insert_or_assign("offset_x", static_cast<std::int64_t>(shell.shadow.offsetX));
-      shadow.insert_or_assign("offset_y", static_cast<std::int64_t>(shell.shadow.offsetY));
+      shadow.insert_or_assign("direction", std::string(enumToKey(kShadowDirections, shell.shadow.direction)));
       shadow.insert_or_assign("alpha", static_cast<double>(shell.shadow.alpha));
       table.insert_or_assign("shadow", std::move(shadow));
 
