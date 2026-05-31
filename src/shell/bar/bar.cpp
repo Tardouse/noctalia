@@ -2622,6 +2622,215 @@ std::string Bar::dispatchScriptedWidgetIpc(std::string_view args) {
   return "error: no scripted widget instance matched '" + widgetName + "' on target '" + target + "'\n";
 }
 
+std::optional<std::string> Bar::collectBarIpcInstances(
+    std::optional<std::string_view> barName, std::optional<std::string_view> monitorSelector,
+    std::vector<BarInstance*>& instancesOut
+) {
+  instancesOut.clear();
+
+  if (m_config == nullptr) {
+    return "error: config service not initialized\n";
+  }
+
+  if (barName.has_value()) {
+    const bool knownBar =
+        std::any_of(m_config->config().bars.begin(), m_config->config().bars.end(), [&](const BarConfig& bar) {
+          return bar.name == *barName;
+        });
+    if (!knownBar) {
+      std::vector<std::string> knownBars;
+      knownBars.reserve(m_config->config().bars.size());
+      for (const auto& bar : m_config->config().bars) {
+        knownBars.push_back(bar.name);
+      }
+      const std::string suffix =
+          knownBars.empty() ? std::string() : std::string("; known: ") + StringUtils::join(knownBars, ", ");
+      return "error: unknown bar \"" + std::string(*barName) + "\"" + suffix + "\n";
+    }
+  }
+
+  const auto matchesBar = [&](const BarInstance& instance) {
+    return !barName.has_value() || instance.barConfig.name == *barName;
+  };
+
+  if (!monitorSelector.has_value()) {
+    for (const auto& instance : m_instances) {
+      if (instance != nullptr && matchesBar(*instance)) {
+        instancesOut.push_back(instance.get());
+      }
+    }
+    if (instancesOut.empty()) {
+      if (barName.has_value()) {
+        return "error: no instances matched bar \"" + std::string(*barName) + "\"\n";
+      }
+      return "error: no bar instances are active\n";
+    }
+    return std::nullopt;
+  }
+
+  if (m_platform == nullptr) {
+    return "error: bar service not initialized\n";
+  }
+
+  const std::string selector(*monitorSelector);
+  std::vector<std::string> outputMatches;
+  std::vector<std::string> knownOutputs;
+  for (const auto& output : m_platform->outputs()) {
+    if (output.connectorName.empty()) {
+      continue;
+    }
+    knownOutputs.push_back(output.connectorName);
+    if (outputMatchesSelector(selector, output)) {
+      outputMatches.push_back(output.connectorName);
+    }
+  }
+
+  std::sort(knownOutputs.begin(), knownOutputs.end());
+  knownOutputs.erase(std::unique(knownOutputs.begin(), knownOutputs.end()), knownOutputs.end());
+  std::sort(outputMatches.begin(), outputMatches.end());
+  outputMatches.erase(std::unique(outputMatches.begin(), outputMatches.end()), outputMatches.end());
+
+  if (outputMatches.empty()) {
+    std::string error = "error: unknown monitor selector \"" + selector + "\"";
+    if (!knownOutputs.empty()) {
+      error += " (available: " + StringUtils::join(knownOutputs, ", ") + ")";
+    }
+    error += "\n";
+    return error;
+  }
+  if (outputMatches.size() > 1) {
+    return "error: monitor selector \""
+        + selector
+        + "\" matched multiple outputs: "
+        + StringUtils::join(outputMatches, ", ")
+        + "\n";
+  }
+
+  for (const auto& instance : m_instances) {
+    if (instance == nullptr || instance->output == nullptr || !matchesBar(*instance)) {
+      continue;
+    }
+    const auto it = std::find_if(
+        m_platform->outputs().begin(), m_platform->outputs().end(),
+        [&instance](const WaylandOutput& output) { return output.output == instance->output; }
+    );
+    if (it != m_platform->outputs().end() && it->connectorName == outputMatches.front()) {
+      instancesOut.push_back(instance.get());
+    }
+  }
+
+  if (instancesOut.empty()) {
+    std::string error = "error: no instances matched";
+    if (barName.has_value()) {
+      error += " bar \"" + std::string(*barName) + "\"";
+    }
+    error += " on \"" + outputMatches.front() + "\"\n";
+    return error;
+  }
+
+  return std::nullopt;
+}
+
+namespace {
+
+  [[nodiscard]] std::optional<std::string> parseBarVisibilityIpcArgs(
+      std::string_view command, std::string_view args, std::optional<std::string_view>& barName,
+      std::optional<std::string_view>& monitorSelector
+  ) {
+    const auto parts = StringUtils::splitWhitespace(StringUtils::trim(args));
+    if (parts.size() > 2) {
+      return "error: usage: " + std::string(command) + " [bar-name] [monitor-selector]\n";
+    }
+    barName = std::nullopt;
+    monitorSelector = std::nullopt;
+    if (parts.size() >= 1) {
+      barName = parts[0];
+    }
+    if (parts.size() >= 2) {
+      monitorSelector = parts[1];
+    }
+    return std::nullopt;
+  }
+
+} // namespace
+
+std::string Bar::showBarIpc(std::string_view args) {
+  std::optional<std::string_view> barName;
+  std::optional<std::string_view> monitorSelector;
+  if (const auto parseError = parseBarVisibilityIpcArgs("bar-show", args, barName, monitorSelector)) {
+    return *parseError;
+  }
+
+  std::vector<BarInstance*> targets;
+  if (const auto collectError = collectBarIpcInstances(barName, monitorSelector, targets)) {
+    return *collectError;
+  }
+
+  for (BarInstance* instance : targets) {
+    instance->ipcLayoutReleased = false;
+    setInstanceIpcVisible(*instance, true);
+    syncBarSurfaceChrome(*instance);
+  }
+  return "ok\n";
+}
+
+std::string Bar::hideBarIpc(std::string_view args) {
+  std::optional<std::string_view> barName;
+  std::optional<std::string_view> monitorSelector;
+  if (const auto parseError = parseBarVisibilityIpcArgs("bar-hide", args, barName, monitorSelector)) {
+    return *parseError;
+  }
+
+  std::vector<BarInstance*> targets;
+  if (const auto collectError = collectBarIpcInstances(barName, monitorSelector, targets)) {
+    return *collectError;
+  }
+
+  for (BarInstance* instance : targets) {
+    if (!instance->barConfig.autoHide) {
+      instance->ipcLayoutReleased = true;
+    }
+    setInstanceIpcVisible(*instance, false);
+    syncBarSurfaceChrome(*instance);
+  }
+  return "ok\n";
+}
+
+std::string Bar::toggleBarIpc(std::string_view args) {
+  std::optional<std::string_view> barName;
+  std::optional<std::string_view> monitorSelector;
+  if (const auto parseError = parseBarVisibilityIpcArgs("bar-toggle", args, barName, monitorSelector)) {
+    return *parseError;
+  }
+
+  std::vector<BarInstance*> targets;
+  if (const auto collectError = collectBarIpcInstances(barName, monitorSelector, targets)) {
+    return *collectError;
+  }
+
+  const bool anyEffectivelyVisible = std::any_of(targets.begin(), targets.end(), [this](const BarInstance* instance) {
+    return instance != nullptr && instanceEffectivelyVisible(*instance);
+  });
+
+  if (anyEffectivelyVisible) {
+    for (BarInstance* instance : targets) {
+      if (!instance->barConfig.autoHide) {
+        instance->ipcLayoutReleased = true;
+      }
+      setInstanceIpcVisible(*instance, false);
+      syncBarSurfaceChrome(*instance);
+    }
+    return "ok\n";
+  }
+
+  for (BarInstance* instance : targets) {
+    instance->ipcLayoutReleased = false;
+    setInstanceIpcVisible(*instance, true);
+    syncBarSurfaceChrome(*instance);
+  }
+  return "ok\n";
+}
+
 std::string Bar::setBarAutoHideIpc(std::string_view args) {
   if (m_config == nullptr) {
     return "error: config service not initialized\n";
@@ -2642,20 +2851,18 @@ std::string Bar::setBarAutoHideIpc(std::string_view args) {
     return "error: invalid value (use on/off, true/false, 1/0)\n";
   }
 
-  std::string barName = parts.size() >= 2 ? parts[1] : "default";
-  const bool knownBar =
-      std::any_of(m_config->config().bars.begin(), m_config->config().bars.end(), [&](const BarConfig& bar) {
-        return bar.name == barName;
-      });
-  if (!knownBar) {
-    std::vector<std::string> knownBars;
-    knownBars.reserve(m_config->config().bars.size());
-    for (const auto& bar : m_config->config().bars) {
-      knownBars.push_back(bar.name);
-    }
-    const std::string suffix =
-        knownBars.empty() ? std::string() : std::string("; known: ") + StringUtils::join(knownBars, ", ");
-    return "error: unknown bar \"" + barName + "\"" + suffix + "\n";
+  std::optional<std::string_view> barName;
+  std::optional<std::string_view> monitorSelector;
+  if (parts.size() >= 2) {
+    barName = parts[1];
+  }
+  if (parts.size() >= 3) {
+    monitorSelector = parts[2];
+  }
+
+  std::vector<BarInstance*> targets;
+  if (const auto collectError = collectBarIpcInstances(barName, monitorSelector, targets)) {
+    return *collectError;
   }
 
   auto applyTransientAutoHide = [this, enabled](BarInstance& instance) {
@@ -2691,106 +2898,26 @@ std::string Bar::setBarAutoHideIpc(std::string_view args) {
     }
   };
 
-  if (parts.size() < 3) {
-    std::size_t updated = 0;
-    for (const auto& instance : m_instances) {
-      if (instance == nullptr || instance->barConfig.name != barName) {
-        continue;
-      }
-      applyTransientAutoHide(*instance);
-      ++updated;
-    }
-    if (updated == 0) {
-      return "error: no instances matched bar \"" + barName + "\"\n";
-    }
-    return "ok\n";
-  }
-
-  if (m_platform == nullptr) {
-    return "error: bar service not initialized\n";
-  }
-
-  const std::string selector = parts[2];
-  std::vector<std::string> matches;
-  std::vector<std::string> knownOutputs;
-  for (const auto& output : m_platform->outputs()) {
-    if (output.connectorName.empty()) {
-      continue;
-    }
-    knownOutputs.push_back(output.connectorName);
-    if (outputMatchesSelector(selector, output)) {
-      matches.push_back(output.connectorName);
-    }
-  }
-
-  std::sort(knownOutputs.begin(), knownOutputs.end());
-  knownOutputs.erase(std::unique(knownOutputs.begin(), knownOutputs.end()), knownOutputs.end());
-  std::sort(matches.begin(), matches.end());
-  matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
-
-  if (matches.empty()) {
-    std::string error = "error: unknown monitor selector \"" + selector + "\"";
-    if (!knownOutputs.empty()) {
-      error += " (available: " + StringUtils::join(knownOutputs, ", ") + ")";
-    }
-    error += "\n";
-    return error;
-  }
-  if (matches.size() > 1) {
-    return "error: monitor selector \""
-        + selector
-        + "\" matched multiple outputs: "
-        + StringUtils::join(matches, ", ")
-        + "\n";
-  }
-
-  std::size_t updated = 0;
-  for (const auto& instance : m_instances) {
-    if (instance == nullptr || instance->barConfig.name != barName || instance->output == nullptr) {
-      continue;
-    }
-    const auto it = std::find_if(
-        m_platform->outputs().begin(), m_platform->outputs().end(),
-        [&instance](const WaylandOutput& output) { return output.output == instance->output; }
-    );
-    if (it == m_platform->outputs().end() || it->connectorName != matches.front()) {
-      continue;
-    }
+  for (BarInstance* instance : targets) {
     applyTransientAutoHide(*instance);
-    ++updated;
-  }
-  if (updated == 0) {
-    return "error: no instances matched bar \"" + barName + "\" on \"" + matches.front() + "\"\n";
   }
   return "ok\n";
 }
 
 void Bar::registerIpc(IpcService& ipc) {
   ipc.registerHandler(
-      "bar-show",
-      [this](const std::string&) -> std::string {
-        show();
-        return "ok\n";
-      },
-      "bar-show", "Show the bar"
+      "bar-show", [this](const std::string& args) -> std::string { return showBarIpc(args); },
+      "bar-show [bar-name] [monitor-selector]", "Show one or all bars"
   );
 
   ipc.registerHandler(
-      "bar-hide",
-      [this](const std::string&) -> std::string {
-        hide();
-        return "ok\n";
-      },
-      "bar-hide", "Hide the bar and release its layout gap"
+      "bar-hide", [this](const std::string& args) -> std::string { return hideBarIpc(args); },
+      "bar-hide [bar-name] [monitor-selector]", "Hide one or all bars and release their layout gaps"
   );
 
   ipc.registerHandler(
-      "bar-toggle",
-      [this](const std::string&) -> std::string {
-        toggle();
-        return "ok\n";
-      },
-      "bar-toggle", "Toggle bar visibility (participates in auto-hide when enabled)"
+      "bar-toggle", [this](const std::string& args) -> std::string { return toggleBarIpc(args); },
+      "bar-toggle [bar-name] [monitor-selector]", "Toggle visibility for one or all bars"
   );
 
   ipc.registerHandler(

@@ -121,7 +121,14 @@ private:
   void startHideFadeOut(BarInstance& instance);
   static void applyBackgroundPalette(BarInstance& instance);
   [[nodiscard]] std::string dispatchScriptedWidgetIpc(std::string_view args);
+  [[nodiscard]] std::string showBarIpc(std::string_view args);
+  [[nodiscard]] std::string hideBarIpc(std::string_view args);
+  [[nodiscard]] std::string toggleBarIpc(std::string_view args);
   [[nodiscard]] std::string setBarAutoHideIpc(std::string_view args);
+  [[nodiscard]] std::optional<std::string> collectBarIpcInstances(
+      std::optional<std::string_view> barName, std::optional<std::string_view> monitorSelector,
+      std::vector<BarInstance*>& instancesOut
+  );
   [[nodiscard]] BarInstance* instanceForSurface(wl_surface* surface) const noexcept;
   [[nodiscard]] BarInstance* instanceForOutput(wl_output* output) const noexcept;
   [[nodiscard]] BarInstance* instanceForBar(wl_output* output, std::string_view barName) const noexcept;
