@@ -33,9 +33,27 @@
   #:use-module (gnu packages image)
   #:use-module (gnu packages jemalloc)
   #:use-module (gnu packages linux)
+  #:use-module (gnu packages maths)
+  #:use-module (gnu packages multiprecision)
   #:use-module (gnu packages pkg-config)
   #:use-module (gnu packages polkit)
-  #:use-module (gnu packages xdisorg))
+  #:use-module (gnu packages xdisorg)
+  #:use-module (gnu packages xml))
+
+(define wayland-protocols-1.48
+  (package
+    (inherit wayland-protocols)
+    (name "wayland-protocols")
+    (version "1.48")
+    (source (origin
+              (method git-fetch)
+              (uri (git-reference
+                     (url "https://gitlab.freedesktop.org/wayland/wayland-protocols")
+                     (commit version)))
+              (file-name (git-file-name name version))
+              (sha256
+               (base32
+                "0zqnn7bwqzifchjhclrrcqnp39cpd3nnf6nbd9bav2hwhcx92mwy"))))))
 
 (define source-checkout
   (local-file "." "noctalia-checkout"
@@ -78,11 +96,15 @@
            fontconfig
            freetype
            glib
+           gmp
+           mpfr
            harfbuzz
            jemalloc
            (librsvg-for-system)
+           libqalculate
            libwebp
            libxkbcommon
+           libxml2
            linux-pam
            mesa
            pango
@@ -90,7 +112,7 @@
            polkit
            sdbus-c++
            wayland
-           wayland-protocols))
+           wayland-protocols-1.48))
     (home-page "https://noctalia.dev/")
     (synopsis "Wayland shell and bar")
     (description
@@ -99,7 +121,7 @@ Wayland and OpenGL ES, with no Qt or GTK dependency.")
     (license license:expat)))
 
 ;; Also return the package at the end, so that this file can be used by
-;; commands that evaluates it.  For example:
+;; commands that evaluate it.  For example:
 ;;
 ;; guix build --file=noctalia.scm
 ;; guix shell --file=noctalia.scm
