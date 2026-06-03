@@ -89,7 +89,10 @@ in
       partOf = [ cfg.systemd.target ];
       after = [ cfg.systemd.target ];
       wantedBy = [ cfg.systemd.target ];
-      environment.PATH = lib.mkForce null;
+      # without this the service will have the default
+      # Environment="PATH=coreutils:…", clobbering the PATH that the DE
+      # imported into the user manager.
+      enableDefaultPath = false;
       restartTriggers = [
         cfg.package
       ]

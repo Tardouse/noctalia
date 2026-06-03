@@ -72,6 +72,7 @@
         {
           imports = [ ./nix/home-module.nix ];
           programs.noctalia.package = lib.mkDefault self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          _class = "homeManager";
         };
 
       hjemModules.default =
@@ -79,6 +80,7 @@
         {
           imports = [ ./nix/hjem-module.nix ];
           programs.noctalia.package = lib.mkDefault self.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          _class = "hjem";
         };
     };
 }
