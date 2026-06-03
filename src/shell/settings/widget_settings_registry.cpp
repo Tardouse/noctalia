@@ -670,9 +670,11 @@ namespace settings {
     } else if (type == "launcher") {
       add(glyphSpec("glyph", "search"));
       add(stringSpec("custom_image", ""));
+      add(boolSpec("custom_image_colorize", false));
     } else if (type == "control-center") {
       add(glyphSpec("glyph", "noctalia"));
       add(stringSpec("custom_image", ""));
+      add(boolSpec("custom_image_colorize", false));
     } else if (type == "custom_button") {
       add(glyphSpec("glyph", "heart"));
       add(stringSpec("label"));

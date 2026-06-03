@@ -11,7 +11,9 @@ struct wl_output;
 
 class LauncherWidget : public Widget {
 public:
-  LauncherWidget(wl_output* output, std::string barGlyphId, std::string logoPath = "");
+  LauncherWidget(
+      wl_output* output, std::string barGlyphId, std::string logoPath = "", bool customImageColorize = false
+  );
 
   void create() override;
 
@@ -20,6 +22,7 @@ private:
   void refreshCustomImageTint();
   std::string m_barGlyphId;
   std::string m_logoPath;
+  bool m_customImageColorize = false;
   Glyph* m_glyph = nullptr;
   Image* m_image = nullptr;
 };

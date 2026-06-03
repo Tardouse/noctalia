@@ -9,8 +9,11 @@
 #include <algorithm>
 #include <memory>
 
-LauncherWidget::LauncherWidget(wl_output* /*output*/, std::string barGlyphId, std::string logoPath)
-    : m_barGlyphId(std::move(barGlyphId)), m_logoPath(std::move(logoPath)) {}
+LauncherWidget::LauncherWidget(
+    wl_output* /*output*/, std::string barGlyphId, std::string logoPath, bool customImageColorize
+)
+    : m_barGlyphId(std::move(barGlyphId)), m_logoPath(std::move(logoPath)), m_customImageColorize(customImageColorize) {
+}
 
 void LauncherWidget::create() {
   auto area = std::make_unique<InputArea>();
@@ -41,7 +44,11 @@ void LauncherWidget::refreshCustomImageTint() {
   if (m_image == nullptr) {
     return;
   }
-  m_image->setForegroundTint(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
+  if (m_customImageColorize) {
+    m_image->setForegroundTint(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
+  } else {
+    m_image->setForegroundTint(std::nullopt);
+  }
 }
 
 void LauncherWidget::doLayout(Renderer& renderer, float /*containerWidth*/, float /*containerHeight*/) {

@@ -9,8 +9,11 @@
 #include <algorithm>
 #include <memory>
 
-ControlCenterWidget::ControlCenterWidget(wl_output* /*output*/, std::string barGlyphId, std::string logoPath)
-    : m_barGlyphId(std::move(barGlyphId)), m_logoPath(std::move(logoPath)) {}
+ControlCenterWidget::ControlCenterWidget(
+    wl_output* /*output*/, std::string barGlyphId, std::string logoPath, bool customImageColorize
+)
+    : m_barGlyphId(std::move(barGlyphId)), m_logoPath(std::move(logoPath)), m_customImageColorize(customImageColorize) {
+}
 
 void ControlCenterWidget::create() {
   auto area = std::make_unique<InputArea>();
@@ -41,7 +44,11 @@ void ControlCenterWidget::refreshCustomImageTint() {
   if (m_image == nullptr) {
     return;
   }
-  m_image->setForegroundTint(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
+  if (m_customImageColorize) {
+    m_image->setForegroundTint(widgetForegroundOr(colorSpecFromRole(ColorRole::OnSurface)));
+  } else {
+    m_image->setForegroundTint(std::nullopt);
+  }
 }
 
 void ControlCenterWidget::doLayout(Renderer& renderer, float /*containerWidth*/, float /*containerHeight*/) {

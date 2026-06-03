@@ -1253,6 +1253,10 @@
           "description": "Path to a custom image. Leave empty to use the icon glyph.",
           "dialog-title": "Select custom image"
         },
+        "custom_image_colorize": {
+          "label": "Colorize custom image",
+          "description": "Tint the custom image with the widget Color setting"
+        },
         "cycle_command": {
           "label": "Cycle Command",
           "description": "Command run when cycling keyboard layouts"

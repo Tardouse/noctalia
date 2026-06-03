@@ -361,9 +361,11 @@ battery_low_percent_threshold = 0   # set to e.g. 15 to enable battery_under_thr
 # power_profile_changed   = "notify-send 'Power' \"Profile: $NOCTALIA_POWER_PROFILE\""
 # [widget.launcher]
 # custom_image = "/path/to/image.png"
+# custom_image_colorize = false
 
 # [widget.control-center]
 # custom_image = "/path/to/image.png"
+# custom_image_colorize = false
 
 # [widget.notifications]
 # hide_when_no_unread = true
