@@ -1,6 +1,7 @@
 #include "calendar/calendar_service.h"
 
 #include "calendar/caldav_client.h"
+#include "calendar/caldav_discovery.h"
 #include "config/config_service.h"
 #include "core/log.h"
 #include "json.hpp"
@@ -11,10 +12,14 @@
 #include <charconv>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
+#include <memory>
+#include <unordered_set>
 
 namespace {
   constexpr Logger kLog("calendar");
   constexpr const char* kCredentialOwner = "calendar_credentials";
+  constexpr const char* kICloudCalDavServerUrl = "https://caldav.icloud.com/";
   constexpr auto kConnectPollInterval = std::chrono::seconds{2};
   constexpr auto kWindowBefore = std::chrono::hours{24 * 31};
   constexpr auto kWindowAfter = std::chrono::hours{24 * 90};
@@ -25,6 +30,16 @@ namespace {
 
   std::chrono::system_clock::time_point fromUnix(std::int64_t seconds) {
     return std::chrono::system_clock::time_point{std::chrono::seconds{seconds}};
+  }
+
+  std::string caldavServerUrl(const CalendarConfig::Account& account) {
+    if (account.provider == "icloud") {
+      return kICloudCalDavServerUrl;
+    }
+    if (account.provider == "custom") {
+      return account.serverUrl;
+    }
+    return {};
   }
 } // namespace
 
@@ -170,24 +185,86 @@ void CalendarService::rebuildSnapshot() {
 }
 
 void CalendarService::fetchCalDav(const CalendarConfig::Account& account) {
-  calendar::CalDavAccount caldav;
-  caldav.url = account.url;
-  caldav.username = account.username;
-  caldav.password = credential(account.id, "password");
-  caldav.calendarName = account.displayName;
-  caldav.color = account.color;
-
-  if (caldav.url.empty() || caldav.username.empty() || caldav.password.empty()) {
-    kLog.warn("caldav account {} is missing url/username/password", account.id);
+  const std::string serverUrl = caldavServerUrl(account);
+  const std::string username = account.username;
+  const std::string password = credential(account.id, "password");
+  if (serverUrl.empty() || username.empty() || password.empty()) {
+    kLog.warn("caldav account {} is missing server_url/username/password", account.id);
     accountDone(account.id, false, {});
     return;
   }
 
   const auto now = std::chrono::system_clock::now();
-  const std::string id = account.id;
-  calendar::fetchCalDavEvents(
-      m_httpClient, caldav, now - kWindowBefore, now + kWindowAfter,
-      [this, id](bool ok, std::vector<CalendarEvent> events) { accountDone(id, ok, std::move(events)); }
+  const std::string accountId = account.id;
+  const std::string accountColor = account.color;
+  const std::vector<std::string> selectedCalendars = account.calendars;
+  const bool allowRedirectAuth = account.provider == "icloud";
+
+  calendar::discoverCalDavCollections(
+      m_httpClient, serverUrl, username, password, allowRedirectAuth,
+      [this, accountId, username, password, accountColor, selectedCalendars,
+       now](bool discovered, std::vector<calendar::CalDavCollection> collections) {
+        if (!discovered) {
+          accountDone(accountId, false, {});
+          return;
+        }
+
+        if (!selectedCalendars.empty()) {
+          const std::unordered_set<std::string> selected(selectedCalendars.begin(), selectedCalendars.end());
+          collections.erase(
+              std::remove_if(
+                  collections.begin(), collections.end(),
+                  [&](const calendar::CalDavCollection& collection) { return !selected.contains(collection.id); }
+              ),
+              collections.end()
+          );
+        }
+
+        if (collections.empty()) {
+          kLog.warn("caldav account {} has no selected calendars after discovery", accountId);
+          accountDone(accountId, false, {});
+          return;
+        }
+
+        struct FetchContext {
+          CalendarService* service = nullptr;
+          std::string accountId;
+          std::size_t pending = 0;
+          bool anyOk = false;
+          std::vector<CalendarEvent> events;
+        };
+        auto ctx = std::make_shared<FetchContext>();
+        ctx->service = this;
+        ctx->accountId = accountId;
+        ctx->pending = collections.size();
+
+        for (const calendar::CalDavCollection& collection : collections) {
+          calendar::CalDavAccount caldav;
+          caldav.url = collection.url;
+          caldav.username = username;
+          caldav.password = password;
+          caldav.calendarName = collection.name;
+          caldav.color = accountColor.empty() ? collection.color : accountColor;
+
+          calendar::fetchCalDavEvents(
+              m_httpClient, caldav, now - kWindowBefore, now + kWindowAfter,
+              [ctx](bool ok, std::vector<CalendarEvent> events) {
+                if (ok) {
+                  ctx->anyOk = true;
+                  ctx->events.insert(
+                      ctx->events.end(), std::make_move_iterator(events.begin()), std::make_move_iterator(events.end())
+                  );
+                }
+                if (ctx->pending > 0) {
+                  --ctx->pending;
+                }
+                if (ctx->pending == 0) {
+                  ctx->service->accountDone(ctx->accountId, ctx->anyOk, std::move(ctx->events));
+                }
+              }
+          );
+        }
+      }
   );
 }
 

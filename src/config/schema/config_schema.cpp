@@ -303,8 +303,35 @@ namespace noctalia::config::schema {
           field(&CalendarConfig::Account::type, "type"),
           field(&CalendarConfig::Account::displayName, "name"),
           field(&CalendarConfig::Account::color, "color"),
-          field(&CalendarConfig::Account::url, "url"),
+          field(&CalendarConfig::Account::provider, "provider"),
+          field(&CalendarConfig::Account::serverUrl, "server_url"),
           field(&CalendarConfig::Account::username, "username"),
+          field(&CalendarConfig::Account::calendars, "calendars"),
+          finalize<CalendarConfig::Account>([](CalendarConfig::Account& out, std::string_view parentPath,
+                                               Diagnostics& diag) {
+            if (out.type != "caldav") {
+              return;
+            }
+            if (out.provider.empty()) {
+              diag.error(
+                  joinPath(parentPath, "provider"), "caldav accounts require provider = \"icloud\" or \"custom\""
+              );
+              return;
+            }
+            if (out.provider == "icloud") {
+              if (!out.serverUrl.empty()) {
+                diag.error(joinPath(parentPath, "server_url"), "icloud accounts use the built-in CalDAV server URL");
+              }
+              return;
+            }
+            if (out.provider == "custom") {
+              if (out.serverUrl.empty()) {
+                diag.error(joinPath(parentPath, "server_url"), "custom caldav accounts require server_url");
+              }
+              return;
+            }
+            diag.error(joinPath(parentPath, "provider"), "unknown caldav provider \"" + out.provider + "\"");
+          }),
       };
       return s;
     }

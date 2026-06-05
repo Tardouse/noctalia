@@ -212,6 +212,27 @@ namespace noctalia::config {
       }
     }
 
+    void validateCalendarSyntax(const toml::table& root, schema::Diagnostics& diag) {
+      const auto* calendar = root["calendar"].as_table();
+      if (calendar == nullptr) {
+        return;
+      }
+      const auto* accounts = (*calendar)["accounts"].as_array();
+      if (accounts == nullptr) {
+        return;
+      }
+      for (const auto& node : *accounts) {
+        const auto* account = node.as_table();
+        if (account == nullptr || !account->contains("url")) {
+          continue;
+        }
+        diag.error(
+            "calendar.accounts.url",
+            "CalDAV collection url was removed; use provider/server_url discovery syntax instead"
+        );
+      }
+    }
+
     void validateBarWidgets(const toml::table& root, schema::Diagnostics& diag) {
       const auto* widgets = root["widget"].as_table();
       if (widgets == nullptr) {
@@ -442,6 +463,7 @@ namespace noctalia::config {
     checkSection(merged, "system", schema::systemSchema(), diag);
     checkSection(merged, "weather", schema::weatherSchema(), diag);
     checkSection(merged, "calendar", schema::calendarSchema(), diag);
+    validateCalendarSyntax(merged, diag);
     checkSection(merged, "audio", schema::audioSchema(), diag);
     checkSection(merged, "brightness", schema::brightnessSchema(), diag);
     checkSection(merged, "battery", schema::batterySchema(), diag);

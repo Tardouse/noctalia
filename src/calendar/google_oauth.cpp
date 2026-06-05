@@ -48,6 +48,7 @@ namespace calendar {
     HttpRequest req;
     req.method = "GET";
     req.url = std::string(kBrokerBase) + "/result";
+    req.followRedirects = true;
     req.headers = {"Authorization: Bearer " + pollToken};
     m_http.request(std::move(req), [cb = std::move(cb)](HttpResponse resp) {
       if (!resp.transportOk) {

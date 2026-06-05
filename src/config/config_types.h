@@ -806,9 +806,11 @@ struct CalendarConfig {
     std::string id;
     std::string type; // "google" | "caldav"
     std::string displayName;
-    std::string color;    // optional "#rrggbb" override
-    std::string url;      // CalDAV collection URL (caldav only)
-    std::string username; // CalDAV login (caldav only)
+    std::string color;                  // optional "#rrggbb" override
+    std::string provider;               // "icloud" | "custom" (caldav only)
+    std::string serverUrl;              // CalDAV discovery root (custom only; provider presets own theirs)
+    std::string username;               // CalDAV login (caldav only)
+    std::vector<std::string> calendars; // discovered collection ids; empty = all
 
     bool operator==(const Account&) const = default;
   };
