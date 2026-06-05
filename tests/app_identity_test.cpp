@@ -92,7 +92,14 @@ int main() {
   assert(fallback.name == "Unknown.App");
   assert(fallback.nameLower == "unknown.app");
   assert(fallback.exec.empty());
-  assert(fallback.icon.empty());
+  assert(fallback.icon == "Unknown.App");
+
+  DesktopEntry vesktopEntry;
+  vesktopEntry.id = "vesktop.desktop";
+  vesktopEntry.icon = "vesktop";
+  const DesktopEntry vesktopResolved = app_identity::resolveRunningDesktopEntry("vesktop", {vesktopEntry});
+  assert(vesktopResolved.icon == "vesktop");
+  assert(app_identity::resolveIconThemeNameForAppKey("vesktop", {vesktopEntry}) == "vesktop");
 
   DesktopEntry hidden = sampleChatEntry();
   hidden.hidden = true;

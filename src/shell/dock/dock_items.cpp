@@ -10,6 +10,8 @@
 #include "shell/dock/dock_instance.h"
 #include "shell/dock/dock_model.h"
 #include "shell/tooltip/tooltip_manager.h"
+#include "system/app_identity.h"
+#include "system/desktop_entry.h"
 #include "system/icon_resolver.h"
 #include "system/internal_app_metadata.h"
 #include "ui/app_icon_colorization.h"
@@ -529,6 +531,17 @@ namespace shell::dock {
         if (const auto internal = internal_apps::metadataForDesktopEntry(model.entry); internal.has_value()) {
           iconPath = internal->iconPath;
         }
+      }
+      if (iconPath.empty()) {
+        const std::string themeName = app_identity::resolveIconThemeNameForAppKey(
+            !model.idLower.empty() ? model.idLower : model.entry.id, desktopEntries()
+        );
+        if (!themeName.empty()) {
+          iconPath = deps.iconResolver.resolve(themeName, cfg.iconSize);
+        }
+      }
+      if (iconPath.empty() && !model.entry.startupWmClass.empty()) {
+        iconPath = deps.iconResolver.resolve(model.entry.startupWmClass, cfg.iconSize);
       }
       if (iconPath.empty()) {
         iconPath = deps.iconResolver.resolve("application-x-executable", cfg.iconSize);

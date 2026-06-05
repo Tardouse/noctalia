@@ -34,47 +34,11 @@ namespace app_identity {
       bool matchedDesktopEntry = false;
     };
 
-    DesktopEntryResolution
-    resolveRunningDesktopEntryWithStatus(std::string_view runningAppId, const std::vector<DesktopEntry>& allEntries) {
-      const std::string runningLower = StringUtils::toLower(std::string(runningAppId));
-
-      for (const auto& entry : allEntries) {
-        if (entry.hidden || entry.noDisplay) {
-          continue;
-        }
-        if (desktopEntryMatchesLower(entry, runningLower)) {
-          return DesktopEntryResolution{
-              .entry = entry,
-              .matchedDesktopEntry = true,
-          };
-        }
-      }
-
-      DesktopEntryLookupOptions extendedLookup;
-      if (runningAppId.starts_with("steam_app_")) {
-        extendedLookup.includeHidden = true;
-        extendedLookup.includeNoDisplay = true;
-      }
-      if (auto matched = findDesktopEntry(runningAppId, allEntries, extendedLookup)) {
-        if (runningAppId.starts_with("steam_app_") && matched->startupWmClass.empty()) {
-          matched->startupWmClass = std::string(runningAppId);
-        }
-        return DesktopEntryResolution{
-            .entry = std::move(*matched),
-            .matchedDesktopEntry = true,
-        };
-      }
-
-      DesktopEntry fallback;
-      fallback.id = std::string(runningAppId);
-      fallback.name = std::string(runningAppId);
-      fallback.nameLower = runningLower;
-      internal_apps::applyMetadataToDesktopEntry(fallback);
-
-      return DesktopEntryResolution{
-          .entry = fallback,
-          .matchedDesktopEntry = false,
-      };
+    [[nodiscard]] std::string desktopEntryStemLower(std::string_view desktopId) {
+      const auto slash = desktopId.rfind('/');
+      const auto base = slash == std::string_view::npos ? desktopId : desktopId.substr(slash + 1);
+      const auto dot = base.rfind('.');
+      return StringUtils::toLower(std::string(dot == std::string_view::npos ? base : base.substr(0, dot)));
     }
 
   } // namespace
@@ -147,6 +111,97 @@ namespace app_identity {
 
     return std::nullopt;
   }
+
+  std::string resolveIconThemeNameForAppKey(std::string_view appKey, const std::vector<DesktopEntry>& allEntries) {
+    if (appKey.empty()) {
+      return {};
+    }
+
+    if (const auto entry = findDesktopEntry(appKey, allEntries)) {
+      if (!entry->icon.empty()) {
+        return entry->icon;
+      }
+    }
+
+    const std::string appLower = StringUtils::toLower(std::string(appKey));
+    for (const auto& entry : allEntries) {
+      if (entry.icon.empty() || entry.hidden || entry.noDisplay) {
+        continue;
+      }
+      if (desktopEntryMatchesLower(entry, appLower)) {
+        return entry.icon;
+      }
+    }
+
+    for (const auto& entry : allEntries) {
+      if (entry.icon.empty()) {
+        continue;
+      }
+      const std::string stem = desktopEntryStemLower(entry.id);
+      if (stem == appLower) {
+        return entry.icon;
+      }
+      const auto dash = stem.rfind('-');
+      if (dash != std::string::npos) {
+        const std::string_view suffix = std::string_view(stem).substr(dash + 1);
+        if (suffix == "bin" || suffix == "desktop") {
+          if (stem.substr(0, dash) == appLower) {
+            return entry.icon;
+          }
+        }
+      }
+    }
+
+    return std::string(appKey);
+  }
+
+  namespace {
+
+    DesktopEntryResolution
+    resolveRunningDesktopEntryWithStatus(std::string_view runningAppId, const std::vector<DesktopEntry>& allEntries) {
+      const std::string runningLower = StringUtils::toLower(std::string(runningAppId));
+
+      for (const auto& entry : allEntries) {
+        if (entry.hidden || entry.noDisplay) {
+          continue;
+        }
+        if (desktopEntryMatchesLower(entry, runningLower)) {
+          return DesktopEntryResolution{
+              .entry = entry,
+              .matchedDesktopEntry = true,
+          };
+        }
+      }
+
+      DesktopEntryLookupOptions extendedLookup;
+      if (runningAppId.starts_with("steam_app_")) {
+        extendedLookup.includeHidden = true;
+        extendedLookup.includeNoDisplay = true;
+      }
+      if (auto matched = findDesktopEntry(runningAppId, allEntries, extendedLookup)) {
+        if (runningAppId.starts_with("steam_app_") && matched->startupWmClass.empty()) {
+          matched->startupWmClass = std::string(runningAppId);
+        }
+        return DesktopEntryResolution{
+            .entry = std::move(*matched),
+            .matchedDesktopEntry = true,
+        };
+      }
+
+      DesktopEntry fallback;
+      fallback.id = std::string(runningAppId);
+      fallback.name = std::string(runningAppId);
+      fallback.nameLower = runningLower;
+      internal_apps::applyMetadataToDesktopEntry(fallback);
+      fallback.icon = resolveIconThemeNameForAppKey(runningAppId, allEntries);
+
+      return DesktopEntryResolution{
+          .entry = fallback,
+          .matchedDesktopEntry = false,
+      };
+    }
+
+  } // namespace
 
   DesktopEntry resolveRunningDesktopEntry(std::string_view runningAppId, const std::vector<DesktopEntry>& allEntries) {
     return resolveRunningDesktopEntryWithStatus(runningAppId, allEntries).entry;

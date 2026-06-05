@@ -70,6 +70,9 @@ namespace shell::dock::pinned_apps {
         return placeholderEntry(pinnedId, pinnedLower);
       }();
       internal_apps::applyMetadataToDesktopEntry(entry);
+      if (entry.icon.empty()) {
+        entry.icon = app_identity::resolveIconThemeNameForAppKey(pinnedId, entries);
+      }
       resolved.push_back(std::move(entry));
     }
 

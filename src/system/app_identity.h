@@ -36,6 +36,10 @@ namespace app_identity {
   [[nodiscard]] DesktopEntry
   resolveRunningDesktopEntry(std::string_view runningAppId, const std::vector<DesktopEntry>& allEntries);
 
+  // Icon theme name for a running app id or desktop entry id (e.g. "vesktop" -> "vesktop").
+  [[nodiscard]] std::string
+  resolveIconThemeNameForAppKey(std::string_view appKey, const std::vector<DesktopEntry>& allEntries);
+
   [[nodiscard]] std::vector<ResolvedRunningApp>
   resolveRunningApps(const std::vector<std::string>& runningAppIds, const std::vector<DesktopEntry>& allEntries);
 
