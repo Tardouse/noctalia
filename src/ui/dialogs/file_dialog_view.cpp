@@ -119,6 +119,8 @@ FileDialogView::FileDialogView(ThumbnailService* thumbnails) : m_thumbnails(thum
 
 FileDialogView::~FileDialogView() = default;
 
+void FileDialogView::setRoot(std::unique_ptr<Node> root) { m_root = std::move(root); }
+
 void FileDialogView::create() {
   const float scale = contentScale();
   m_listRowHeight = std::ceil(32.0f * scale);
