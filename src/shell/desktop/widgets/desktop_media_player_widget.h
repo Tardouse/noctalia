@@ -71,5 +71,7 @@ private:
   std::string m_lastArtist;
   std::string m_lastArtUrl;
   std::string m_lastPlaybackStatus;
+  bool m_lastCanGoPrevious = false;
+  bool m_lastCanGoNext = false;
   std::unordered_set<std::string> m_pendingArtDownloads;
 };

@@ -235,6 +235,7 @@ void DesktopMediaPlayerWidget::layoutHorizontal(Renderer& renderer, float scale)
   m_artwork->setPosition(0.0f, 0.0f);
 
   const float textX = artH + spacing;
+  const float totalWidth = textX + textWidth;
 
   m_title->setFontSize(fontSize);
   m_title->setMaxWidth(textWidth);
@@ -247,19 +248,20 @@ void DesktopMediaPlayerWidget::layoutHorizontal(Renderer& renderer, float scale)
   layoutButtons(renderer, scale);
 
   const float titleH = m_title->height();
-  const float artistH = m_artist->visible() ? m_artist->height() + spacing * 0.5f : 0.0f;
+  const float artistGap = m_artist->visible() ? spacing * 0.5f : 0.0f;
+  const float artistH = m_artist->visible() ? m_artist->height() : 0.0f;
   const float controlsH = m_controls->height();
-  const float textBlockH = titleH + artistH + spacing * 0.5f + controlsH;
-  const float textY = std::round((artH - textBlockH) * 0.5f);
+  const float textAreaH = std::max(0.0f, artH - controlsH - spacing);
+  const float textBlockH = titleH + artistGap + artistH;
+  const float textY = std::round(std::max(0.0f, (textAreaH - textBlockH) * 0.5f));
 
   m_title->setPosition(textX, textY);
-  m_artist->setPosition(textX, textY + titleH + spacing * 0.5f);
+  m_artist->setPosition(textX, textY + titleH + artistGap);
 
-  const float controlsY = textY + titleH + artistH + spacing * 0.5f;
-  m_controls->setPosition(textX, controlsY);
+  const float controlsY = artH - controlsH;
+  const float controlsX = totalWidth - m_controls->width();
+  m_controls->setPosition(controlsX, controlsY);
 
-  const float totalWidth =
-      textX + std::max({m_title->width(), m_artist->visible() ? m_artist->width() : 0.0f, m_controls->width()});
   root()->setSize(totalWidth, artH);
 }
 
@@ -270,6 +272,7 @@ void DesktopMediaPlayerWidget::layoutButtons(Renderer& renderer, float scale) {
   const float playPauseGlyphSize = Style::fontSizeBody * 1.2f * scale;
 
   m_controls->setGap(Style::spaceXs * scale);
+  m_controls->setJustify(m_vertical ? FlexJustify::Center : FlexJustify::End);
 
   m_prev->setMinWidth(controlBtnSize);
   m_prev->setMinHeight(controlBtnSize);
@@ -312,32 +315,53 @@ void DesktopMediaPlayerWidget::sync(Renderer& renderer) {
   std::string artist;
   std::string artUrl;
   std::string playbackStatus;
+  bool canGoPrevious = false;
+  bool canGoNext = false;
 
   if (active.has_value()) {
     title = active->title;
     artist = joinArtists(active->artists);
     artUrl = effectiveArtUrl(*active);
     playbackStatus = active->playbackStatus;
+    canGoPrevious = active->canGoPrevious;
+    canGoNext = active->canGoNext;
   }
 
   const bool titleChanged = title != m_lastTitle;
   const bool artistChanged = artist != m_lastArtist;
   const bool artChanged = artUrl != m_lastArtUrl;
   const bool statusChanged = playbackStatus != m_lastPlaybackStatus;
+  const bool canGoPreviousChanged = canGoPrevious != m_lastCanGoPrevious;
+  const bool canGoNextChanged = canGoNext != m_lastCanGoNext;
   const bool artAwaitingDecode = m_artwork != nullptr && !artUrl.empty() && !m_artwork->hasImage();
-  if (!titleChanged && !artistChanged && !artChanged && !statusChanged && !artAwaitingDecode)
+  if (!titleChanged
+      && !artistChanged
+      && !artChanged
+      && !statusChanged
+      && !canGoPreviousChanged
+      && !canGoNextChanged
+      && !artAwaitingDecode) {
     return;
+  }
 
   m_lastTitle = title;
   m_lastArtist = artist;
   m_lastArtUrl = artUrl;
   m_lastPlaybackStatus = playbackStatus;
+  m_lastCanGoPrevious = canGoPrevious;
+  m_lastCanGoNext = canGoNext;
 
   m_title->setText(m_lastTitle.empty() ? i18n::tr("desktop-widgets.media.nothing-playing") : m_lastTitle);
   m_artist->setText(m_lastArtist);
   m_artist->setVisible(!m_lastArtist.empty());
 
   m_playPause->setGlyph(m_lastPlaybackStatus == "Playing" ? "media-pause" : "media-play");
+  if (m_prev != nullptr) {
+    m_prev->setVisible(canGoPrevious);
+  }
+  if (m_next != nullptr) {
+    m_next->setVisible(canGoNext);
+  }
 
   if (m_artwork != nullptr) {
     const int targetPx = static_cast<int>(std::round(kArtSize * contentScale()));
@@ -357,7 +381,11 @@ void DesktopMediaPlayerWidget::sync(Renderer& renderer) {
     }
   }
 
-  requestRedraw();
+  if (canGoPreviousChanged || canGoNextChanged) {
+    requestLayout();
+  } else {
+    requestRedraw();
+  }
 }
 
 void DesktopMediaPlayerWidget::applyShadow() {
