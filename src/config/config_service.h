@@ -73,9 +73,10 @@ public:
   // Persisted wallpaper paths (written to settings.toml, app-managed).
   [[nodiscard]] std::string getWallpaperPath(const std::string& connectorName) const;
   [[nodiscard]] std::string getDefaultWallpaperPath() const;
-  // Most recently applied wallpaper path (any output, or default). Used as the palette/template input
-  // so colors are generated even when wallpaper management is only used on a subset of displays.
+  // Last applied wallpaper, else default. Drives palette generation and template previews.
   [[nodiscard]] std::string getPaletteWallpaperPath() const;
+  // Greeter sync fallback when no monitor-specific path is chosen.
+  [[nodiscard]] std::string getGreeterSyncWallpaperPath() const;
   void setWallpaperPath(const std::optional<std::string>& connectorName, const std::string& path);
   void setWallpaperChangeCallback(ChangeCallback callback);
 

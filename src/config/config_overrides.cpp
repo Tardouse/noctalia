@@ -1346,6 +1346,26 @@ std::string ConfigService::getPaletteWallpaperPath() const {
   return m_defaultWallpaperPath;
 }
 
+std::string ConfigService::getGreeterSyncWallpaperPath() const {
+  const std::string palettePath = getPaletteWallpaperPath();
+  if (!palettePath.empty()) {
+    return palettePath;
+  }
+
+  std::vector<std::string> connectors;
+  connectors.reserve(m_monitorWallpaperPaths.size());
+  for (const auto& [connector, path] : m_monitorWallpaperPaths) {
+    if (!path.empty()) {
+      connectors.push_back(connector);
+    }
+  }
+  std::sort(connectors.begin(), connectors.end());
+  for (const std::string& connector : connectors) {
+    return m_monitorWallpaperPaths.at(connector);
+  }
+  return {};
+}
+
 void ConfigService::setWallpaperChangeCallback(ChangeCallback callback) {
   m_wallpaperChangeCallback = std::move(callback);
 }
