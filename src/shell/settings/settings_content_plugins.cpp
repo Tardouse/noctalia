@@ -81,6 +81,11 @@ namespace settings {
     pluginRow(const scripting::PluginStatus& plugin, const SettingsPluginsContext& ctx, float scale) {
       auto row = ui::row({.align = FlexAlign::Center, .gap = Style::spaceSm * scale, .fillWidth = true});
       Flex* r = row.get();
+      bool enabled = plugin.enabled;
+      if (ctx.config != nullptr) {
+        enabled = std::find(ctx.config->plugins.enabled.begin(), ctx.config->plugins.enabled.end(), plugin.id)
+            != ctx.config->plugins.enabled.end();
+      }
 
       auto info = ui::column({.align = FlexAlign::Start, .gap = 2.0F * scale, .flexGrow = 1.0F});
       auto title = ui::row({.align = FlexAlign::Center, .gap = Style::spaceXs * scale});
@@ -98,13 +103,12 @@ namespace settings {
       r->addChild(std::move(info));
 
       const auto* manifest = scripting::PluginRegistry::instance().findManifest(plugin.id);
-      if (plugin.enabled && manifest != nullptr && !manifest->settings.empty() && ctx.controlFactory != nullptr) {
-        const bool open = ctx.configurePluginId == plugin.id;
+      if (enabled && manifest != nullptr && !manifest->settings.empty() && ctx.onConfigure) {
         r->addChild(
             ui::button({
                 .glyph = "settings",
                 .glyphSize = Style::fontSizeBody * scale,
-                .variant = open ? ButtonVariant::Primary : ButtonVariant::Ghost,
+                .variant = ButtonVariant::Ghost,
                 .tooltip = "Configure",
                 .onClick = [cb = ctx.onConfigure, id = plugin.id]() {
                   if (cb) {
@@ -117,7 +121,7 @@ namespace settings {
 
       r->addChild(
           ui::toggle({
-              .checked = plugin.enabled,
+              .checked = enabled,
               .enabled = plugin.compatible,
               .scale = scale,
               .onChange = [cb = ctx.setEnabled, id = plugin.id](bool on) {
@@ -275,45 +279,41 @@ namespace settings {
       }
     }
 
-    void addPluginSettingsPanel(
-        Flex& section, const std::string& pluginId, const scripting::PluginManifest& manifest,
-        const SettingsPluginsContext& ctx
-    ) {
-      const auto specs = settings::manifestSettingSpecs(manifest.settings);
-      auto panel = ui::column({
-          .align = FlexAlign::Stretch,
-          .gap = Style::spaceXs * ctx.scale,
-          .padding = Style::spaceSm * ctx.scale,
-          .fillWidth = true,
-      });
-      Flex* p = panel.get();
-
-      for (const auto& spec : specs) {
-        if (spec.advanced && !ctx.showAdvanced) {
-          continue;
-        }
-        if (ctx.config == nullptr || !pluginSettingVisible(*ctx.config, pluginId, spec, specs)) {
-          continue;
-        }
-        const std::vector<std::string> path = {"plugin_settings", pluginId, spec.schema.key};
-        const WidgetSettingValue value = pluginSettingValue(*ctx.config, pluginId, spec);
-        SettingEntry entry{
-            .section = SettingsSection::Bar,
-            .group = "plugin-settings",
-            .title = spec.literalLabel,
-            .subtitle = spec.literalDescription,
-            .path = path,
-            .control = TextSetting{},
-            .advanced = spec.advanced,
-            .searchText = {},
-            .visibleWhen = std::nullopt,
-        };
-        ctx.controlFactory->makeRow(*p, entry, pluginSettingControl(*ctx.controlFactory, spec, value, path));
-      }
-
-      section.addChild(std::move(panel));
-    }
   } // namespace
+
+  void buildPluginSettingsEditor(
+      Flex& body, const Config& cfg, SettingsControlFactory& factory, const std::string& pluginId,
+      const scripting::PluginManifest& manifest, bool showAdvanced, float scale
+  ) {
+    const auto specs = settings::manifestSettingSpecs(manifest.settings);
+    bool rendered = false;
+    for (const auto& spec : specs) {
+      if (spec.advanced && !showAdvanced) {
+        continue;
+      }
+      if (!pluginSettingVisible(cfg, pluginId, spec, specs)) {
+        continue;
+      }
+      const std::vector<std::string> path = {"plugin_settings", pluginId, spec.schema.key};
+      const WidgetSettingValue value = pluginSettingValue(cfg, pluginId, spec);
+      SettingEntry entry{
+          .section = SettingsSection::Bar,
+          .group = "plugin-settings",
+          .title = spec.literalLabel,
+          .subtitle = spec.literalDescription,
+          .path = path,
+          .control = TextSetting{},
+          .advanced = spec.advanced,
+          .searchText = {},
+          .visibleWhen = std::nullopt,
+      };
+      factory.makeRow(body, entry, pluginSettingControl(factory, spec, value, path));
+      rendered = true;
+    }
+    if (!rendered) {
+      body.addChild(makeLabel("No settings available.", Style::fontSizeCaption * scale, ColorRole::OnSurfaceVariant));
+    }
+  }
 
   void addSettingsPlugins(Flex& content, SettingsPluginsContext ctx) {
     if (ctx.selectedSection != "plugins") {
@@ -361,7 +361,12 @@ namespace settings {
 
     // ── Plugins ──────────────────────────────────────────────────────────
     section->addChild(makeLabel("Plugins", Style::fontSizeBody * scale, ColorRole::Secondary, FontWeight::Bold));
-    if (ctx.plugins.empty()) {
+    if (ctx.pluginsLoading) {
+      section->addChild(makeLabel(
+          ctx.plugins.empty() ? "Loading plugins..." : "Refreshing plugins...", Style::fontSizeCaption * scale,
+          ColorRole::OnSurfaceVariant
+      ));
+    } else if (ctx.plugins.empty()) {
       section->addChild(makeLabel(
           "No plugins found. Add a source, or check your network.", Style::fontSizeCaption * scale,
           ColorRole::OnSurfaceVariant
@@ -369,12 +374,6 @@ namespace settings {
     }
     for (const auto& plugin : ctx.plugins) {
       section->addChild(pluginRow(plugin, ctx, scale));
-      if (ctx.configurePluginId == plugin.id && ctx.controlFactory != nullptr) {
-        if (const auto* manifest = scripting::PluginRegistry::instance().findManifest(plugin.id);
-            manifest != nullptr && !manifest->settings.empty()) {
-          addPluginSettingsPanel(*section, plugin.id, *manifest, ctx);
-        }
-      }
     }
   }
 

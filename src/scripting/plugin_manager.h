@@ -67,6 +67,7 @@ namespace scripting {
     // Every plugin offered by the local dev source + each configured source, with
     // its compatibility and active state. For the management CLI / settings browser.
     [[nodiscard]] std::vector<PluginStatus> list() const;
+    [[nodiscard]] std::vector<PluginStatus> list(const PluginsConfig& plugins) const;
 
     // Add (or replace) a source and refresh.
     void addSource(const PluginSourceConfig& source);

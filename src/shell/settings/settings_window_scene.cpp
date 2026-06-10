@@ -503,11 +503,7 @@ void SettingsWindow::rebuildSettingsContent() {
   );
 
   if (m_selectedSection == "plugins" && m_pluginManager != nullptr) {
-    if (m_pluginListDirty) {
-      m_pluginList = m_pluginManager->list();
-      m_pluginListDirty = false;
-    }
-    settings::SettingsControlFactory pluginFactory(makeContentContext(cfg, selectedBar, selectedMonitorOverride));
+    refreshPluginListIfNeeded();
     settings::addSettingsPlugins(
         *m_contentContainer,
         settings::SettingsPluginsContext{
@@ -515,6 +511,7 @@ void SettingsWindow::rebuildSettingsContent() {
             .selectedSection = m_selectedSection,
             .plugins = m_pluginList,
             .sources = cfg.plugins.sources,
+            .pluginsLoading = m_pluginListDirty || m_pluginListRefreshInFlight,
             .setEnabled =
                 [this](std::string id, bool enable) {
                   if (enable) {
@@ -522,30 +519,23 @@ void SettingsWindow::rebuildSettingsContent() {
                   } else {
                     m_pluginManager->disable(id);
                   }
-                  m_pluginListDirty = true;
+                  markPluginListDirty();
                   requestSceneRebuild();
                 },
             .updateSource = [this](std::string source) { m_pluginManager->update(std::move(source)); },
             .removeSource =
                 [this](std::string source) {
                   m_pluginManager->removeSource(std::move(source));
-                  m_pluginListDirty = true;
+                  markPluginListDirty();
                   requestSceneRebuild();
                 },
             .refresh =
                 [this]() {
-                  m_pluginListDirty = true;
+                  markPluginListDirty();
                   requestSceneRebuild();
                 },
             .config = &cfg,
-            .controlFactory = &pluginFactory,
-            .configurePluginId = m_configurePluginId,
-            .showAdvanced = m_showAdvanced,
-            .onConfigure =
-                [this](std::string id) {
-                  m_configurePluginId = (m_configurePluginId == id) ? std::string{} : std::move(id);
-                  requestSceneRebuild();
-                },
+            .onConfigure = [this](std::string id) { openPluginSettingsEditor(std::move(id)); },
         }
     );
   }

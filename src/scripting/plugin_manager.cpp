@@ -393,9 +393,10 @@ namespace scripting {
     refresh();
   }
 
-  std::vector<PluginStatus> PluginManager::list() const {
-    const auto& pc = m_config.config().plugins;
-    const std::unordered_set<std::string> enabledSet(pc.enabled.begin(), pc.enabled.end());
+  std::vector<PluginStatus> PluginManager::list() const { return list(m_config.config().plugins); }
+
+  std::vector<PluginStatus> PluginManager::list(const PluginsConfig& plugins) const {
+    const std::unordered_set<std::string> enabledSet(plugins.enabled.begin(), plugins.enabled.end());
 
     std::vector<PluginStatus> out;
     const auto collect = [&](const std::string& sourceName, const CatalogResult& catalog) {
@@ -420,7 +421,7 @@ namespace scripting {
       };
       collect("local", discoverCatalog(localSource));
     }
-    for (const auto& source : pc.sources) {
+    for (const auto& source : plugins.sources) {
       collect(source.name, discoverCatalog(source));
     }
     return out;

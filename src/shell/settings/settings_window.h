@@ -17,6 +17,7 @@
 #include "ui/dialogs/layer_popup_host.h"
 #include "wayland/toplevel_surface.h"
 
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -71,6 +72,7 @@ public:
   void onFontChanged();
   void requestRedraw();
   void onExternalOptionsChanged();
+  void onPluginsChanged();
   void setOpenDesktopWidgetEditor(std::function<void()> callback) { m_openDesktopWidgetEditor = std::move(callback); }
   void setOpenLockscreenWidgetEditor(std::function<void()> callback) {
     m_openLockscreenWidgetEditor = std::move(callback);
@@ -112,6 +114,8 @@ private:
   );
   void requestSceneRebuild();
   void requestContentRebuild();
+  void markPluginListDirty();
+  void refreshPluginListIfNeeded();
   void maybeOpenPendingWidgetInspector();
   void applyPendingContentScrollTarget(float margin);
   void clearStatusMessage();
@@ -130,6 +134,7 @@ private:
   void openCalendarAccountEditor(std::optional<std::string> accountId);
   void openWidgetInspectorEditor(std::vector<std::string> laneListPath, std::string widgetName);
   void openCapsuleGroupEditor(std::vector<std::string> laneListPath, std::string groupId);
+  void openPluginSettingsEditor(std::string pluginId);
   void openBarWidgetEditorSheet(std::string title, std::function<void(Flex&)> populate);
   void closeWidgetInspectorPopup();
   void refreshIdleLiveStatusText();
@@ -160,12 +165,11 @@ private:
   IdleManager* m_idleManager = nullptr;
   ConfigService* m_config = nullptr;
   scripting::PluginManager* m_pluginManager = nullptr;
-  // Cached PluginManager::list() — discovery can spawn git, so refresh it only on
-  // entering the Plugins section and after an enable/disable/source action.
+  // Cached PluginManager::list() — discovery can spawn git, so refresh it off the UI path.
   std::vector<scripting::PluginStatus> m_pluginList;
   bool m_pluginListDirty = true;
-  // Plugin id whose plugin-level settings editor is expanded in the Plugins section.
-  std::string m_configurePluginId;
+  bool m_pluginListRefreshInFlight = false;
+  std::uint64_t m_pluginListRefreshGeneration = 0;
   RenderContext* m_renderContext = nullptr;
   DependencyService* m_dependencies = nullptr;
   UPowerService* m_upower = nullptr;
