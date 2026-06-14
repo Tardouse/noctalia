@@ -1949,6 +1949,11 @@ namespace settings {
         ToggleSetting{.checked = cfg.brightness.enableDdcutil, .enabled = env.ddcutilAvailable}, "monitor ddcutil"
     ));
     entries.push_back(makeEntry(
+        SettingsSection::Services, "brightness", tr("settings.schema.services.minimum-brightness.label"),
+        tr("settings.schema.services.minimum-brightness.description"), {"brightness", "minimum_brightness"},
+        sliderFor(cfg.brightness.minimumBrightness, noctalia::config::schema::kUnitRange, false), "floor clamp"
+    ));
+    entries.push_back(makeEntry(
         SettingsSection::Services, "media", tr("settings.schema.services.mpris-blacklist.label"),
         tr("settings.schema.services.mpris-blacklist.description"), {"shell", "mpris", "blacklist"},
         ListSetting{.items = cfg.shell.mpris.blacklist}, "mpris media player dbus session blacklist"

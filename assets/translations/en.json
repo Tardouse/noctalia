@@ -1817,6 +1817,10 @@
           "description": "Manual longitude for the sunrise/sunset schedule, used when auto-locate and address are off",
           "label": "Longitude"
         },
+        "minimum-brightness": {
+          "description": "Prevent screen from going completely dark",
+          "label": "Minimum Brightness"
+        },
         "mpris-blacklist": {
           "description": "Players to ignore for media controls and Now Playing",
           "label": "MPRIS Player Blacklist"

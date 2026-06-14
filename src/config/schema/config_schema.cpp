@@ -294,6 +294,7 @@ namespace noctalia::config::schema {
     static const Schema<BrightnessConfig> s = {
         field(&BrightnessConfig::enableDdcutil, "enable_ddcutil"),
         field(&BrightnessConfig::ddcutilIgnoreMmids, "ignore_mmids"),
+        field(&BrightnessConfig::minimumBrightness, "minimum_brightness", kUnitRange),
         // Map key seeds `match`; an explicit `match` key inside overrides it.
         namedMap<BrightnessConfig, BrightnessMonitorOverride>(
             &BrightnessConfig::monitorOverrides, "monitor", brightnessMonitorSchema(),

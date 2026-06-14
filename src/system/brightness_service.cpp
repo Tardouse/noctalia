@@ -862,7 +862,7 @@ struct BrightnessService::Impl {
       display.sysfsPath = path;
       display.connectorName = connectorName;
       display.pub.id = !connectorName.empty() ? connectorName : name;
-      display.pub.brightness = readBacklightBrightness(path, maxBrightness);
+      display.pub.brightness = std::max(readBacklightBrightness(path, maxBrightness), activeConfig.minimumBrightness);
 
       if (output != nullptr) {
         applyOutputMetadata(display.pub, *output);
@@ -994,7 +994,7 @@ struct BrightnessService::Impl {
       return;
     }
 
-    value = std::clamp(value, 0.0f, 1.0f);
+    value = std::clamp(value, std::clamp(activeConfig.minimumBrightness, 0.0f, 1.0f), 1.0f);
     switch (display->backend) {
     case RuntimeBackend::Backlight:
       setBacklightBrightness(*display, value);
@@ -1289,7 +1289,7 @@ struct BrightnessService::Impl {
       display.ddcBus = candidate.bus;
       display.maxRaw = candidate.maxRaw;
       display.pub.id = candidate.connectorName;
-      display.pub.brightness = normalizedBrightness(candidate.currentRaw, candidate.maxRaw);
+      display.pub.brightness = std::max(normalizedBrightness(candidate.currentRaw, candidate.maxRaw), activeConfig.minimumBrightness);
       applyOutputMetadata(display.pub, *output);
       internals.push_back(std::move(display));
 
@@ -1324,7 +1324,7 @@ struct BrightnessService::Impl {
       display->quarantined = false;
       display->cooldownUntil = {};
       display->maxRaw = completion.maxRaw;
-      display->pub.brightness = normalizedBrightness(completion.currentRaw, completion.maxRaw);
+      display->pub.brightness = std::max(normalizedBrightness(completion.currentRaw, completion.maxRaw), activeConfig.minimumBrightness);
       syncPublicDisplay(*display);
       return std::abs(display->pub.brightness - oldBrightness) > 0.001f;
     }
@@ -1372,7 +1372,7 @@ struct BrightnessService::Impl {
             continue;
           }
 
-          const float newBrightness = readBacklightBrightness(display.sysfsPath, display.maxRaw);
+          const float newBrightness = std::max(readBacklightBrightness(display.sysfsPath, display.maxRaw), activeConfig.minimumBrightness);
           if (std::abs(newBrightness - display.pub.brightness) > 0.001f) {
             display.pub.brightness = newBrightness;
             syncPublicDisplay(display);
