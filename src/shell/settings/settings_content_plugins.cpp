@@ -132,6 +132,21 @@ namespace settings {
       return row;
     }
 
+    std::unique_ptr<Flex> makeSourceBadge(std::string_view label, float scale) {
+      return ui::row(
+          {.align = FlexAlign::Center,
+           .paddingH = Style::spaceXs * scale,
+           .fill = colorSpecFromRole(ColorRole::Primary, 0.15f),
+           .radius = Style::scaledRadiusSm(scale)},
+          ui::label({
+              .text = std::string(label),
+              .fontSize = Style::fontSizeCaption * scale,
+              .color = colorSpecFromRole(ColorRole::Primary),
+              .fontWeight = FontWeight::Bold,
+          })
+      );
+    }
+
     std::unique_ptr<Flex>
     pluginRow(const scripting::PluginStatus& plugin, const SettingsPluginsContext& ctx, float scale) {
       auto row = ui::row({.align = FlexAlign::Center, .gap = Style::spaceSm * scale, .fillWidth = true});
@@ -154,9 +169,13 @@ namespace settings {
       title->addChild(
           makeLabel(pluginDisplayName(plugin), Style::fontSizeBody * scale, ColorRole::OnSurface, FontWeight::Medium)
       );
-      title->addChild(
-          makeLabel(pluginSourceDisplayName(plugin.source), Style::fontSizeCaption * scale, ColorRole::OnSurfaceVariant)
-      );
+      if (plugin.source == "official") {
+        title->addChild(makeSourceBadge(i18n::tr("settings.badges.official"), scale));
+      } else if (!plugin.source.empty()) {
+        title->addChild(makeLabel(
+            pluginSourceDisplayName(plugin.source), Style::fontSizeCaption * scale, ColorRole::OnSurfaceVariant
+        ));
+      }
       title->addChild(makeLabel("v" + version, Style::fontSizeCaption * scale, ColorRole::OnSurfaceVariant));
       if (!plugin.compatible) {
         title->addChild(makeLabel(
