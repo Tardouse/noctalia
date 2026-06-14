@@ -573,6 +573,8 @@
       "keybind-invalid-title": "Keybind not allowed",
       "launcher-usage-reset": "Launcher",
       "launcher-usage-reset-success": "Usage data cleared.",
+      "screen-time-reset": "Screen Time",
+      "screen-time-reset-success": "Usage history cleared.",
       "lockscreen-widgets-editor": "Lockscreen widget editor",
       "lockscreen-widgets-editor-blocked-locked": "Unlock the session before editing lockscreen widgets.",
       "lockscreen-widgets-editor-enabled": "Lockscreen widget editor is on. Arrange widgets on the preview overlay, then lock the session to verify the layout.",
@@ -2144,6 +2146,11 @@
         "screen-time-enabled": {
           "description": "Track per-app usage and show it in Control Center",
           "label": "Screen Time"
+        },
+        "screen-time-reset": {
+          "button": "Reset",
+          "description": "Clear stored per-app foreground usage history",
+          "label": "Reset Screen Time Data"
         },
         "screenshot-copy-to-clipboard": {
           "description": "Place the captured PNG on the clipboard selection",

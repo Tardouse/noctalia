@@ -938,6 +938,33 @@ void SettingsWindow::buildScene(std::uint32_t width, std::uint32_t height) {
     m_settingsRegistry.insert(it, std::move(btn));
   }
 
+  if (m_resetScreenTime) {
+    auto it = std::find_if(m_settingsRegistry.begin(), m_settingsRegistry.end(), [](const settings::SettingEntry& e) {
+      return e.section == settings::SettingsSection::System
+          && e.group == "screen-time"
+          && e.path == std::vector<std::string>{"shell", "screen_time_enabled"};
+    });
+    if (it != m_settingsRegistry.end()) {
+      ++it;
+    }
+    settings::SettingEntry btn{
+        .section = settings::SettingsSection::System,
+        .group = "screen-time",
+        .title = i18n::tr("settings.schema.shell.screen-time-reset.label"),
+        .subtitle = i18n::tr("settings.schema.shell.screen-time-reset.description"),
+        .path = {},
+        .control =
+            settings::ButtonSetting{
+                .label = i18n::tr("settings.schema.shell.screen-time-reset.button"),
+                .action = m_resetScreenTime,
+                .glyph = "refresh",
+            },
+        .searchText = "screen time reset usage history clear tracking",
+        .visibleWhen = settings::SettingVisibility{{"shell", "screen_time_enabled"}, {"true"}},
+    };
+    m_settingsRegistry.insert(it, std::move(btn));
+  }
+
   if (m_saveWallpaperPaletteAsCustom && cfg.theme.source == PaletteSource::Wallpaper) {
     auto it = std::find_if(m_settingsRegistry.begin(), m_settingsRegistry.end(), [](const settings::SettingEntry& e) {
       return e.section == settings::SettingsSection::Appearance

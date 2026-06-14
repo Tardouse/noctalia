@@ -1452,6 +1452,13 @@ void Application::initUi() {
         i18n::tr("notifications.internal.launcher-usage-reset-success")
     );
   });
+  m_settingsWindow.setResetScreenTime([this]() {
+    m_screenTimeService.clearAll();
+    notify::info(
+        "Noctalia", i18n::tr("notifications.internal.screen-time-reset"),
+        i18n::tr("notifications.internal.screen-time-reset-success")
+    );
+  });
   reloadPluginLauncherProviders();
   m_overviewLauncherCapture.initialize(m_wayland, &m_renderContext, m_compositorPlatform, m_panelManager);
   m_overviewLauncherCapture.setEnabled(m_configService.config().shell.niriOverviewTypeToLaunchEnabled);
