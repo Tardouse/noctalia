@@ -222,6 +222,15 @@ TextureHandle Wallpaper::currentTexture() const {
   return {};
 }
 
+std::string Wallpaper::currentPath() const {
+  for (const auto& inst : m_instances) {
+    if (inst->currentTexture.id != 0 && !inst->currentPath.empty()) {
+      return inst->currentPath;
+    }
+  }
+  return {};
+}
+
 bool Wallpaper::ownsSurface(wl_surface* surface) const noexcept {
   if (surface == nullptr) {
     return false;
@@ -1027,6 +1036,7 @@ void Wallpaper::loadWallpaper(WallpaperInstance& instance, const std::string& pa
     instance.queuedPath.clear();
     updateRendererState(instance);
     instance.surface->requestRedraw();
+    m_changed.emit();
     return;
   }
 
@@ -1074,6 +1084,7 @@ void Wallpaper::startTransition(WallpaperInstance& instance) {
         // The frame loop stops once there are no active animations, so the
         // promoted final wallpaper needs one explicit redraw.
         inst->surface->requestRedraw();
+        m_changed.emit();
 
         if (!inst->queuedPath.empty() && inst->queuedPath != inst->currentPath) {
           const std::string queuedPath = inst->queuedPath;

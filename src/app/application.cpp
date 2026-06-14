@@ -1426,7 +1426,7 @@ void Application::initUi() {
           m_networkService.get(), m_networkSecretAgent.get(), m_bluetoothService.get(), m_bluetoothAgent.get(),
           m_brightnessService.get(), m_systemMonitor.get(), &m_screenTimeService, &m_gammaService, &m_themeService,
           &m_idleInhibitor, &m_dependencyService, &m_compositorPlatform, &m_ipcService, &m_wallpaper,
-          &m_calendarService, &m_scriptApi, &m_clipboardService, m_accountsService.get()
+          &m_calendarService, &m_scriptApi, &m_clipboardService, m_accountsService.get(), &m_thumbnailService
       )
   );
   {

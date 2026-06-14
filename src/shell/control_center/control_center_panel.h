@@ -57,6 +57,7 @@ namespace scripting {
 }
 
 class AccountsService;
+class ThumbnailService;
 
 class ControlCenterPanel : public Panel {
 public:
@@ -72,7 +73,7 @@ public:
       DependencyService* dependencies = nullptr, CompositorPlatform* platform = nullptr, IpcService* ipc = nullptr,
       Wallpaper* wallpaper = nullptr, CalendarService* calendar = nullptr,
       scripting::ScriptApiContext* scriptApi = nullptr, ClipboardService* clipboard = nullptr,
-      AccountsService* accounts = nullptr
+      AccountsService* accounts = nullptr, ThumbnailService* thumbnails = nullptr
   );
 
   void create() override;
