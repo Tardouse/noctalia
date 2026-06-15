@@ -295,6 +295,10 @@ void PanelManager::setAttachedPanelAvailabilityCallback(std::function<bool(wl_ou
   m_attachedPanelAvailabilityCallback = std::move(callback);
 }
 
+void PanelManager::setAttachedPanelBarSettledCallback(std::function<bool(wl_output*, std::string_view)> callback) {
+  m_attachedPanelBarSettledCallback = std::move(callback);
+}
+
 void PanelManager::registerPanel(const std::string& id, std::unique_ptr<Panel> content) {
   m_panels[id] = std::move(content);
 }
@@ -1408,6 +1412,11 @@ void PanelManager::applyDetachedReveal(float progress) {
 
 void PanelManager::startAttachedOpenAnimation() {
   if (!m_attachedOpenAnimationPending || !m_attachedToBar || m_attachedRevealClipNode == nullptr || m_closing) {
+    return;
+  }
+  if (m_attachedPanelBarSettledCallback != nullptr
+      && m_output != nullptr
+      && !m_attachedPanelBarSettledCallback(m_output, m_sourceBarName)) {
     return;
   }
 

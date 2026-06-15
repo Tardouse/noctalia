@@ -1326,6 +1326,15 @@ bool Bar::canAttachPanelToBar(wl_output* output, std::string_view barName) const
   return instance->barConfig.autoHide || instanceEffectivelyVisible(*instance);
 }
 
+bool Bar::isAttachedPanelBarSettled(wl_output* output, std::string_view barName) const noexcept {
+  const BarInstance* instance = instanceForBar(output, barName);
+  if (instance == nullptr || !instance->barConfig.autoHide) {
+    return true;
+  }
+  constexpr float kSettledThreshold = 0.999f;
+  return instance->hideOpacity >= kSettledThreshold;
+}
+
 void Bar::revealAutoHideForAttachedPanel(wl_output* output, std::string_view barName) {
   BarInstance* instance = instanceForBar(output, barName);
   if (instance != nullptr) {
