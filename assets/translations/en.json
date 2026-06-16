@@ -370,6 +370,7 @@
         "font-family-default": "System default",
         "forecast-days": "Forecast Days",
         "format": "Format",
+        "interface": "Interface",
         "hide-when-no-media": "Hide When No Media",
         "horizontal": "Horizontal",
         "image-path": "Image",
@@ -2608,6 +2609,10 @@
         "icon-size": {
           "description": "Icon size in pixels",
           "label": "Icon Size"
+        },
+        "interface": {
+          "description": "Network interface to monitor; leave empty to use the total across all interfaces",
+          "label": "Interface"
         },
         "inactive-opacity": {
           "description": "Opacity of icons for inactive (unfocused) windows.",

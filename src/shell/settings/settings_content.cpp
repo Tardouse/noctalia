@@ -234,8 +234,7 @@ namespace settings {
       auto input = ui::input({
           .out = &inputPtr,
           .value = setting.value,
-          .placeholder = setting.placeholder.empty() ? i18n::tr("settings.controls.list.add-entry-placeholder")
-                                                     : setting.placeholder,
+          .placeholder = setting.placeholder,
           .fontSize = Style::fontSizeBody * scale,
           .controlHeight = Style::controlHeight * scale,
           .horizontalPadding = Style::spaceSm * scale,

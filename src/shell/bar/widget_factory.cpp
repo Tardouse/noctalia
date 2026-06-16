@@ -456,6 +456,7 @@ std::unique_ptr<Widget> WidgetFactory::create(
       stat = SysmonStat::NetTx;
     }
     const std::string display = wc != nullptr ? wc->getString("display", "gauge") : std::string("gauge");
+    const std::string networkInterface = wc != nullptr ? wc->getString("interface", "") : std::string();
     SysmonDisplayMode displayMode = SysmonDisplayMode::Gauge;
     if (display == "text")
       displayMode = SysmonDisplayMode::Text;
@@ -469,7 +470,8 @@ std::unique_ptr<Widget> WidgetFactory::create(
           )
         : colorSpecFromRole(ColorRole::Error);
     auto widget = std::make_unique<SysmonWidget>(
-        m_sysmon, output, stat, std::move(path), displayMode, highlightColor, m_configService, showLabel, labelMinWidth
+        m_sysmon, output, stat, std::move(path), displayMode, highlightColor, m_configService, networkInterface,
+        showLabel, labelMinWidth
     );
     widget->setContentScale(contentScale);
     return widget;

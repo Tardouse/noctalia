@@ -27,10 +27,10 @@ namespace {
 
 DesktopSysmonWidget::DesktopSysmonWidget(
     SystemMonitorService* monitor, DesktopSysmonStat stat, std::optional<DesktopSysmonStat> stat2, ColorSpec lineColor,
-    ColorSpec lineColor2, bool showLabel, bool shadow
+    ColorSpec lineColor2, std::string networkInterface, bool showLabel, bool shadow
 )
     : m_monitor(monitor), m_stat(stat), m_stat2(stat2), m_lineColor(lineColor), m_lineColor2(lineColor2),
-      m_showLabel(showLabel), m_shadow(shadow) {
+      m_networkInterface(std::move(networkInterface)), m_showLabel(showLabel), m_shadow(shadow) {
   if (m_monitor != nullptr) {
     if (needsCpuTemp(m_stat))
       m_monitor->retainCpuTemp();
@@ -259,7 +259,8 @@ void DesktopSysmonWidget::syncLabel() {
 }
 
 double DesktopSysmonWidget::normalizedFromStats(
-    DesktopSysmonStat stat, const SystemStats& stats, double& tempMin, double& tempMax
+    DesktopSysmonStat stat, const SystemStats& stats, double& tempMin, double& tempMax,
+    std::string_view networkInterface
 ) {
   switch (stat) {
   case DesktopSysmonStat::CpuUsage:
@@ -310,13 +311,29 @@ double DesktopSysmonWidget::normalizedFromStats(
     }
     return 0.0;
 
-  case DesktopSysmonStat::NetRx:
-    tempMax = std::max(tempMax, stats.netRxBytesPerSec);
-    return tempMax > 0.0 ? std::clamp(stats.netRxBytesPerSec / tempMax, 0.0, 1.0) : 0.0;
+  case DesktopSysmonStat::NetRx: {
+    const double value = networkInterface.empty() ? stats.netRxBytesPerSec : [&stats, networkInterface]() {
+      if (const auto it = stats.netThroughputByInterface.find(std::string(networkInterface));
+          it != stats.netThroughputByInterface.end()) {
+        return it->second.rxBytesPerSec;
+      }
+      return 0.0;
+    }();
+    tempMax = std::max(tempMax, value);
+    return tempMax > 0.0 ? std::clamp(value / tempMax, 0.0, 1.0) : 0.0;
+  }
 
-  case DesktopSysmonStat::NetTx:
-    tempMax = std::max(tempMax, stats.netTxBytesPerSec);
-    return tempMax > 0.0 ? std::clamp(stats.netTxBytesPerSec / tempMax, 0.0, 1.0) : 0.0;
+  case DesktopSysmonStat::NetTx: {
+    const double value = networkInterface.empty() ? stats.netTxBytesPerSec : [&stats, networkInterface]() {
+      if (const auto it = stats.netThroughputByInterface.find(std::string(networkInterface));
+          it != stats.netThroughputByInterface.end()) {
+        return it->second.txBytesPerSec;
+      }
+      return 0.0;
+    }();
+    tempMax = std::max(tempMax, value);
+    return tempMax > 0.0 ? std::clamp(value / tempMax, 0.0, 1.0) : 0.0;
+  }
   }
 
   return 0.0;
@@ -372,10 +389,10 @@ std::string DesktopSysmonWidget::formatValueFor(DesktopSysmonStat stat) const {
     return "--";
 
   case DesktopSysmonStat::NetRx:
-    return FormatUnits::formatDecimalBytesPerSecond(stats.netRxBytesPerSec);
+    return FormatUnits::formatDecimalBytesPerSecond(m_monitor->netRxBytesPerSec(m_networkInterface));
 
   case DesktopSysmonStat::NetTx:
-    return FormatUnits::formatDecimalBytesPerSecond(stats.netTxBytesPerSec);
+    return FormatUnits::formatDecimalBytesPerSecond(m_monitor->netTxBytesPerSec(m_networkInterface));
   }
 
   return "--";
@@ -413,15 +430,18 @@ void DesktopSysmonWidget::updateGraph(Renderer& renderer) {
   const auto n = hist.size();
   std::vector<float> data1(n);
   for (std::size_t i = 0; i < n; ++i) {
-    data1[i] = static_cast<float>(std::clamp(normalizedFromStats(m_stat, hist[i], m_tempMin1, m_tempMax1), 0.0, 1.0));
+    data1[i] = static_cast<float>(
+        std::clamp(normalizedFromStats(m_stat, hist[i], m_tempMin1, m_tempMax1, m_networkInterface), 0.0, 1.0)
+    );
   }
   m_graph->setValues(std::move(data1));
 
   if (m_stat2.has_value()) {
     std::vector<float> data2(n);
     for (std::size_t i = 0; i < n; ++i) {
-      data2[i] =
-          static_cast<float>(std::clamp(normalizedFromStats(*m_stat2, hist[i], m_tempMin2, m_tempMax2), 0.0, 1.0));
+      data2[i] = static_cast<float>(
+          std::clamp(normalizedFromStats(*m_stat2, hist[i], m_tempMin2, m_tempMax2, m_networkInterface), 0.0, 1.0)
+      );
     }
     m_graph->setValues2(std::move(data2));
   }

@@ -303,6 +303,12 @@ namespace desktop_settings {
     } else if (type == "sysmon") {
       add(selectSpec("stat", "cpu_usage", sysmonStats));
       add(selectSpec("stat2", "", sysmonStatsWithNone));
+      {
+        auto interface = stringSpec("interface");
+        interface.visibleWhen =
+            WidgetSettingVisibility{{{"stat", {"net_rx", "net_tx"}}, {"stat2", {"net_rx", "net_tx"}}}};
+        add(std::move(interface));
+      }
       add(colorSpec("color", "primary"));
       add(colorSpec("color2", "secondary"));
       add(fontFamilySpec());

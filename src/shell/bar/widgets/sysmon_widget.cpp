@@ -105,12 +105,12 @@ namespace {
 
 SysmonWidget::SysmonWidget(
     SystemMonitorService* monitor, wl_output* /*output*/, SysmonStat stat, std::string diskPath,
-    SysmonDisplayMode displayMode, ColorSpec highlightColor, ConfigService& configService, bool showLabel,
-    float labelMinWidth
+    SysmonDisplayMode displayMode, ColorSpec highlightColor, ConfigService& configService, std::string networkInterface,
+    bool showLabel, float labelMinWidth
 )
     : m_monitor(monitor), m_stat(stat), m_displayMode(displayMode), m_highlightColor(highlightColor),
       m_configService(configService), m_showLabel(showLabel), m_labelMinWidth(labelMinWidth),
-      m_diskPath(std::move(diskPath)) {
+      m_diskPath(std::move(diskPath)), m_networkInterface(std::move(networkInterface)) {
   if (m_monitor != nullptr) {
     if (needsCpuTemp(m_stat)) {
       m_monitor->retainCpuTemp();
@@ -311,9 +311,9 @@ double SysmonWidget::currentGradientValue() {
     }
     return 0.0;
   case SysmonStat::NetRx:
-    return std::max(stats.netRxBytesPerSec / kBytesPerMb, 0.0);
+    return std::max(m_monitor->netRxBytesPerSec(m_networkInterface) / kBytesPerMb, 0.0);
   case SysmonStat::NetTx:
-    return std::max(stats.netTxBytesPerSec / kBytesPerMb, 0.0);
+    return std::max(m_monitor->netTxBytesPerSec(m_networkInterface) / kBytesPerMb, 0.0);
   case SysmonStat::DiskPct:
     return 0.0;
   }
@@ -585,7 +585,9 @@ void SysmonWidget::updateGraph(Renderer& renderer) {
     }
     data.resize(hist.size());
     for (std::size_t i = 0; i < hist.size(); ++i) {
-      data[i] = static_cast<float>(std::clamp(normalizedFromStats(m_stat, hist[i], m_tempMin, m_tempMax), 0.0, 1.0));
+      data[i] = static_cast<float>(
+          std::clamp(normalizedFromStats(m_stat, hist[i], m_tempMin, m_tempMax, m_networkInterface), 0.0, 1.0)
+      );
     }
   }
 
@@ -613,7 +615,9 @@ float SysmonWidget::scrollProgressForSample(std::chrono::steady_clock::time_poin
   return std::chrono::duration<float>(clamped).count() / std::chrono::duration<float>(sampleInterval).count();
 }
 
-double SysmonWidget::normalizedFromStats(SysmonStat stat, const SystemStats& stats, double& tempMin, double& tempMax) {
+double SysmonWidget::normalizedFromStats(
+    SysmonStat stat, const SystemStats& stats, double& tempMin, double& tempMax, std::string_view networkInterface
+) {
   switch (stat) {
   case SysmonStat::CpuUsage:
     return stats.cpuUsagePercent / 100.0;
@@ -672,13 +676,27 @@ double SysmonWidget::normalizedFromStats(SysmonStat stat, const SystemStats& sta
     return 0.0;
 
   case SysmonStat::NetRx: {
-    tempMax = std::max(tempMax, stats.netRxBytesPerSec);
-    return tempMax > 0.0 ? std::clamp(stats.netRxBytesPerSec / tempMax, 0.0, 1.0) : 0.0;
+    const double value = networkInterface.empty() ? stats.netRxBytesPerSec : [&stats, networkInterface]() {
+      if (const auto it = stats.netThroughputByInterface.find(std::string(networkInterface));
+          it != stats.netThroughputByInterface.end()) {
+        return it->second.rxBytesPerSec;
+      }
+      return 0.0;
+    }();
+    tempMax = std::max(tempMax, value);
+    return tempMax > 0.0 ? std::clamp(value / tempMax, 0.0, 1.0) : 0.0;
   }
 
   case SysmonStat::NetTx: {
-    tempMax = std::max(tempMax, stats.netTxBytesPerSec);
-    return tempMax > 0.0 ? std::clamp(stats.netTxBytesPerSec / tempMax, 0.0, 1.0) : 0.0;
+    const double value = networkInterface.empty() ? stats.netTxBytesPerSec : [&stats, networkInterface]() {
+      if (const auto it = stats.netThroughputByInterface.find(std::string(networkInterface));
+          it != stats.netThroughputByInterface.end()) {
+        return it->second.txBytesPerSec;
+      }
+      return 0.0;
+    }();
+    tempMax = std::max(tempMax, value);
+    return tempMax > 0.0 ? std::clamp(value / tempMax, 0.0, 1.0) : 0.0;
   }
 
   case SysmonStat::DiskPct:
@@ -696,7 +714,9 @@ double SysmonWidget::currentNormalized() {
     return std::clamp(static_cast<double>(m_monitor->diskUsagePercent(m_diskPath)) / 100.0, 0.0, 1.0);
   }
 
-  return std::clamp(normalizedFromStats(m_stat, m_monitor->latest(), m_tempMin, m_tempMax), 0.0, 1.0);
+  return std::clamp(
+      normalizedFromStats(m_stat, m_monitor->latest(), m_tempMin, m_tempMax, m_networkInterface), 0.0, 1.0
+  );
 }
 
 std::string SysmonWidget::formatValue() const {
@@ -756,10 +776,10 @@ std::string SysmonWidget::formatValue() const {
     return "--";
 
   case SysmonStat::NetRx:
-    return FormatUnits::formatDecimalBytesPerSecond(stats.netRxBytesPerSec);
+    return FormatUnits::formatDecimalBytesPerSecond(m_monitor->netRxBytesPerSec(m_networkInterface));
 
   case SysmonStat::NetTx:
-    return FormatUnits::formatDecimalBytesPerSecond(stats.netTxBytesPerSec);
+    return FormatUnits::formatDecimalBytesPerSecond(m_monitor->netTxBytesPerSec(m_networkInterface));
 
   case SysmonStat::DiskPct:
     break; // handled above

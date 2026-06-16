@@ -751,6 +751,11 @@ namespace settings {
         path.visibleWhen = WidgetSettingVisibility{"stat", {"disk_pct"}};
         add(std::move(path));
       }
+      {
+        auto interface = stringSpec("interface");
+        interface.visibleWhen = WidgetSettingVisibility{"stat", {"net_rx", "net_tx"}};
+        add(std::move(interface));
+      }
       add(segmentedSpec("display", "gauge", sysmonDisplay));
       add(colorSpec("highlight_color", "error"));
       add(boolSpec("show_label", true));

@@ -536,7 +536,7 @@ namespace settings {
     const float inputWidth = (width > 0.0f ? width : 190.0f) * scale;
     auto input = ui::input({
         .value = value,
-        .placeholder = placeholder.empty() ? i18n::tr("settings.controls.list.add-entry-placeholder") : placeholder,
+        .placeholder = placeholder,
         .fontSize = Style::fontSizeBody * scale,
         .controlHeight = Style::controlHeight * scale,
         .horizontalPadding = Style::spaceSm * scale,

@@ -138,6 +138,28 @@ namespace {
     return fastest;
   }
 
+  [[nodiscard]] double netRxFromStats(const SystemStats& stats, std::string_view interfaceName) {
+    if (interfaceName.empty()) {
+      return stats.netRxBytesPerSec;
+    }
+    if (const auto it = stats.netThroughputByInterface.find(std::string(interfaceName));
+        it != stats.netThroughputByInterface.end()) {
+      return it->second.rxBytesPerSec;
+    }
+    return 0.0;
+  }
+
+  [[nodiscard]] double netTxFromStats(const SystemStats& stats, std::string_view interfaceName) {
+    if (interfaceName.empty()) {
+      return stats.netTxBytesPerSec;
+    }
+    if (const auto it = stats.netThroughputByInterface.find(std::string(interfaceName));
+        it != stats.netThroughputByInterface.end()) {
+      return it->second.txBytesPerSec;
+    }
+    return 0.0;
+  }
+
   [[nodiscard]] SystemConfig::MonitorConfig sanitizeMonitorConfig(SystemConfig::MonitorConfig config) {
     config.cpuPollSeconds = clampPollSeconds(config.cpuPollSeconds);
     config.gpuPollSeconds = clampPollSeconds(config.gpuPollSeconds);
@@ -924,6 +946,16 @@ std::vector<SystemStats> SystemMonitorService::history(int windowSize) const {
   return historyWindowFromRing(m_history, m_historyHead, windowSize);
 }
 
+double SystemMonitorService::netRxBytesPerSec(std::string_view interfaceName) const {
+  std::lock_guard lock{m_statsMutex};
+  return netRxFromStats(m_latest, interfaceName);
+}
+
+double SystemMonitorService::netTxBytesPerSec(std::string_view interfaceName) const {
+  std::lock_guard lock{m_statsMutex};
+  return netTxFromStats(m_latest, interfaceName);
+}
+
 void SystemMonitorService::retainCpuTemp() { m_cpuTempRefs.fetch_add(1, std::memory_order_relaxed); }
 
 void SystemMonitorService::releaseCpuTemp() { m_cpuTempRefs.fetch_sub(1, std::memory_order_relaxed); }
@@ -1138,21 +1170,30 @@ void SystemMonitorService::samplingLoop() {
         const double scale = intervalSeconds > 0.0 ? 1.0 / intervalSeconds : 1.0;
         double totalRx = 0.0;
         double totalTx = 0.0;
+        std::unordered_map<std::string, SystemStats::NetThroughput> byInterface;
         for (const auto& [iface, cur] : *currentNetBytes) {
           const auto it = m_prevNetBytes.find(iface);
+          double ifaceRx = 0.0;
+          double ifaceTx = 0.0;
           if (it != m_prevNetBytes.end()) {
             if (cur.rx >= it->second.rx) {
-              totalRx += static_cast<double>(cur.rx - it->second.rx) * scale;
+              ifaceRx = static_cast<double>(cur.rx - it->second.rx) * scale;
             }
             if (cur.tx >= it->second.tx) {
-              totalTx += static_cast<double>(cur.tx - it->second.tx) * scale;
+              ifaceTx = static_cast<double>(cur.tx - it->second.tx) * scale;
             }
           }
+          if (iface != "lo") {
+            totalRx += ifaceRx;
+            totalTx += ifaceTx;
+          }
+          byInterface.emplace(iface, SystemStats::NetThroughput{.rxBytesPerSec = ifaceRx, .txBytesPerSec = ifaceTx});
         }
         m_prevNetBytes = *currentNetBytes;
         std::lock_guard lock{m_statsMutex};
         m_latest.netRxBytesPerSec = totalRx;
         m_latest.netTxBytesPerSec = totalTx;
+        m_latest.netThroughputByInterface = std::move(byInterface);
       }
       nextNetwork = now + networkInterval;
       statsTouched = true;
@@ -1597,9 +1638,6 @@ SystemMonitorService::readNetBytes() {
     std::string iface = line.substr(0, colonPos);
     while (!iface.empty() && iface.front() == ' ') {
       iface.erase(iface.begin());
-    }
-    if (iface == "lo") {
-      continue;
     }
 
     std::istringstream iss{line.substr(colonPos + 1)};
