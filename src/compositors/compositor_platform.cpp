@@ -473,6 +473,30 @@ namespace {
     return assignments;
   }
 
+  void applyKdeWorkspaceOccupancy(std::vector<Workspace>& workspaces, const std::vector<WorkspaceWindow>& tracked) {
+    if (workspaces.empty() || tracked.empty()) {
+      return;
+    }
+
+    std::unordered_set<std::string> occupiedIds;
+    occupiedIds.reserve(tracked.size());
+    for (const auto& window : tracked) {
+      if (window.workspaceKey.empty()) {
+        continue;
+      }
+      const std::string resolved = resolveKdeWorkspaceKey(window.workspaceKey, workspaces);
+      if (!resolved.empty()) {
+        occupiedIds.insert(resolved);
+      }
+    }
+
+    for (auto& workspace : workspaces) {
+      if (!workspace.id.empty() && occupiedIds.contains(workspace.id)) {
+        workspace.occupied = true;
+      }
+    }
+  }
+
 } // namespace
 
 CompositorPlatform::CompositorPlatform(WaylandConnection& wayland)
@@ -997,6 +1021,9 @@ std::vector<Workspace> CompositorPlatform::workspaces() const {
   if (m_workspaceMetadataBackend != nullptr) {
     m_workspaceMetadataBackend->apply(current);
   }
+  if (compositors::isKde() && m_kwinActiveWindow != nullptr && m_kwinActiveWindow->isAvailable()) {
+    applyKdeWorkspaceOccupancy(current, m_kwinActiveWindow->trackedWorkspaceWindows());
+  }
   return current;
 }
 
@@ -1004,6 +1031,9 @@ std::vector<Workspace> CompositorPlatform::workspaces(wl_output* output) const {
   auto current = m_workspaces != nullptr ? m_workspaces->forOutput(output) : std::vector<Workspace>{};
   if (m_workspaceMetadataBackend != nullptr) {
     m_workspaceMetadataBackend->apply(current, connectorNameForOutput(output));
+  }
+  if (compositors::isKde() && m_kwinActiveWindow != nullptr && m_kwinActiveWindow->isAvailable()) {
+    applyKdeWorkspaceOccupancy(current, m_kwinActiveWindow->trackedWorkspaceWindows());
   }
   return current;
 }
