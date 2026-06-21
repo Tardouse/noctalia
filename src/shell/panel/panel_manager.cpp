@@ -1569,15 +1569,6 @@ void PanelManager::applyPanelCompositorBlur() {
     return;
   }
 
-  // The blur region is not opacity-aware: while the panel is still mostly translucent a
-  // submitted region would show through as a blurred blob, so keep it cleared until the
-  // panel is opaque enough. This works the same during both fade in/out.
-  const float kBlurRevealThreshold = 0.6f;
-  if (m_detachedRevealProgress < kBlurRevealThreshold) {
-    m_surface->clearBlurRegion();
-    return;
-  }
-
   int bx = m_panelInsetX;
   int by = m_panelInsetY;
   int bw = static_cast<int>(m_panelVisualWidth);
@@ -1588,6 +1579,15 @@ void PanelManager::applyPanelCompositorBlur() {
   }
 
   if (!m_attachedToBar) {
+    // The blur region is not opacity-aware: while the detached panel is still mostly
+    // translucent a submitted region would show through as a blurred blob, so keep it
+    // cleared until the panel is opaque enough. This works the same during both fade in/out.
+    const float kBlurRevealThreshold = 0.6f;
+    if (m_detachedRevealProgress < kBlurRevealThreshold) {
+      m_surface->clearBlurRegion();
+      return;
+    }
+
     const float progress = std::clamp(m_detachedRevealProgress, 0.0f, 1.0f);
     const float s = 1.0f - 0.05f * (1.0f - progress);
     const int scaledW = static_cast<int>(std::lround(static_cast<float>(bw) * s));
