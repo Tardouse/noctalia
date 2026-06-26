@@ -45,7 +45,7 @@ void RovingListNavController::registerItem(Button* button, std::function<void()>
   if (button == nullptr) {
     return;
   }
-  button->setTabStop(false);
+  button->setTabStop(m_options.keepItemsInTabOrder);
   m_items.push_back(Item{button, std::move(activate)});
 }
 
