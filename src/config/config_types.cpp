@@ -150,7 +150,11 @@ std::vector<IdleBehaviorConfig> defaultIdleBehaviors() {
 std::vector<KeyChord> defaultKeybindSet(KeybindAction action) {
   switch (action) {
   case KeybindAction::Validate:
-    return {{.sym = XKB_KEY_Return, .modifiers = 0}, {.sym = XKB_KEY_KP_Enter, .modifiers = 0}};
+    return {
+        {.sym = XKB_KEY_Return, .modifiers = 0},
+        {.sym = XKB_KEY_KP_Enter, .modifiers = 0},
+        {.sym = XKB_KEY_space, .modifiers = 0},
+    };
   case KeybindAction::Cancel:
     return {{.sym = XKB_KEY_Escape, .modifiers = 0}};
   case KeybindAction::Left:

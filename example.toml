@@ -256,7 +256,7 @@ enabled = false
 # ── Keybinds ──────────────────────────────────────────────────────────────────
 
 [keybinds]
-validate = ["return", "kp_enter"]
+validate = ["return", "kp_enter", "space"]
 cancel   = ["escape"]
 left     = ["left"]
 right    = ["right"]
