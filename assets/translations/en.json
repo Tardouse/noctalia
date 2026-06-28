@@ -749,6 +749,13 @@
       "on": "Wi-Fi On"
     }
   },
+  "plugins": {
+    "auto-disabled": {
+      "body-errors": "{plugin} hit too many errors and was disabled. Reload it after fixing the issue.",
+      "body-timeouts": "{plugin} stopped responding and was disabled. Reload it after fixing the issue.",
+      "title": "Plugin disabled"
+    }
+  },
   "power": {
     "battery": {
       "states": {
