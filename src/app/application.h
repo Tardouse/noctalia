@@ -176,6 +176,9 @@ private:
   void reloadDmenuProviders();
   // (Re)register plugin-backed panels from the enabled plugin set.
   void reloadPluginPanels();
+  // Pull every git source flagged auto_update. Run once at startup and on a 6h
+  // repeating timer so long-lived sessions pick up new plugin versions.
+  void runPluginAutoUpdate();
   void startTrayService();
   void syncNotificationDaemon();
   void installNotificationBusNameWatch();
@@ -333,6 +336,7 @@ private:
   Timer m_polkitInitTimer;
   Timer m_greeterSyncTimeoutTimer;
   Timer m_clipboardAutoPasteTimer;
+  Timer m_pluginAutoUpdateTimer;
   std::uint64_t m_greeterSyncGeneration = 0;
 
   std::unique_ptr<MainLoop> m_mainLoop;
