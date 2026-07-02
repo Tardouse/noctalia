@@ -82,6 +82,7 @@
 #include "system/easyeffects_service.h"
 #include "system/system_monitor_service.h"
 #include "ui/app_icon_colorization.h"
+#include "ui/controls/context_menu_popup.h"
 #include "ui/controls/input.h"
 #include "ui/dialogs/color_picker_dialog.h"
 #include "ui/dialogs/file_dialog.h"
@@ -409,6 +410,14 @@ void Application::initInputDispatch() {
   m_wayland.setKeyboardEventCallback([this](const KeyboardEvent& event) {
     if (m_lockScreen.isActive()) {
       m_lockScreen.onKeyboardEvent(event);
+      return;
+    }
+    // Grab popups are modal — while one is open it owns the keyboard and ESC
+    // dismisses it before anything behind can react.
+    if (ContextMenuPopup::dispatchKeyboardEvent(event)) {
+      return;
+    }
+    if (m_trayMenu.onKeyboardEvent(event)) {
       return;
     }
     if (m_colorPickerDialogPopup.isOpen()) {

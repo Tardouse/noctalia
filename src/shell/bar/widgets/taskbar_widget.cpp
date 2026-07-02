@@ -2077,6 +2077,7 @@ void TaskbarWidget::openTaskContextMenu(const TaskModel& task, InputArea& area) 
               PopupSurfaceParent{
                   .layerSurface = layerSurface,
                   .output = m_output,
+                  .wlSurface = pointerSurface,
               },
           .placement = placement,
       }

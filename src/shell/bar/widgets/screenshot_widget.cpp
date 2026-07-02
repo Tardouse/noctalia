@@ -268,6 +268,7 @@ void ScreenshotWidget::openCaptureMenu() {
               PopupSurfaceParent{
                   .layerSurface = layerSurface,
                   .output = m_output,
+                  .wlSurface = pointerSurface,
               },
           .placement = menuAnchor.placement,
       }

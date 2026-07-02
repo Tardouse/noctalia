@@ -1542,10 +1542,6 @@ void PanelManager::onKeyboardEvent(const KeyboardEvent& event) {
       }
       return;
     }
-    if (m_activePopup != nullptr && m_activePopup->isOpen()) {
-      m_activePopup->close();
-      return;
-    }
     closePanel();
     return;
   }
