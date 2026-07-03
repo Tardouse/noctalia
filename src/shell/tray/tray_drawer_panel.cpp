@@ -27,8 +27,20 @@ PanelPlacement TrayDrawerPanel::panelPlacement() const noexcept {
   return PanelPlacement::Attached;
 }
 
+std::optional<float> TrayDrawerPanel::currentDrawerItemSize() const {
+  if (m_config == nullptr) {
+    return std::nullopt;
+  }
+  if (const auto it = m_config->config().widgets.find("tray"); it != m_config->config().widgets.end()) {
+    if (it->second.hasSetting("drawer_item_size")) {
+      return static_cast<float>(it->second.getDouble("drawer_item_size", static_cast<double>(Style::baseGlyphSize)));
+    }
+  }
+  return std::nullopt;
+}
+
 float TrayDrawerPanel::preferredWidth() const {
-  const float itemSize = scaled(Style::baseGlyphSize);
+  const float itemSize = scaled(currentDrawerItemSize().value_or(Style::baseGlyphSize));
   const float gap = scaled(Style::spaceXs);
   const std::size_t drawerColumns = currentDrawerColumns();
   const std::size_t cols = std::min<std::size_t>(drawerColumns, std::max<std::size_t>(1, visibleItemCount()));
@@ -38,7 +50,7 @@ float TrayDrawerPanel::preferredWidth() const {
 }
 
 float TrayDrawerPanel::preferredHeight() const {
-  const float itemSize = scaled(Style::baseGlyphSize);
+  const float itemSize = scaled(currentDrawerItemSize().value_or(Style::baseGlyphSize));
   const float gap = scaled(Style::spaceXs);
   const std::size_t count = std::max<std::size_t>(1, visibleItemCount());
   const std::size_t drawerColumns = currentDrawerColumns();
@@ -52,6 +64,7 @@ void TrayDrawerPanel::create() {
   const auto hiddenItems = currentHiddenItems();
   const auto pinnedItems = currentPinnedItems();
   const std::size_t drawerColumns = currentDrawerColumns();
+  const std::optional<float> itemSize = currentDrawerItemSize();
   if (m_config == nullptr) {
     return;
   }
@@ -67,6 +80,7 @@ void TrayDrawerPanel::create() {
           .panelGridColumns = drawerColumns,
           .inlineEntryGap = Style::spaceXs,
           .matchAdjacentSpacing = false,
+          .customItemSize = itemSize,
       }
   );
   m_drawerWidget->setContentScale(contentScale());

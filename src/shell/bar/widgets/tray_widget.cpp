@@ -170,7 +170,8 @@ TrayWidget::TrayWidget(ConfigService& config, TrayService* tray, TrayWidgetOptio
       m_itemActivated(std::move(options.itemActivated)), m_barPosition(std::move(options.barPosition)),
       m_panelGridMode(options.panelGridMode),
       m_panelGridColumns(std::clamp<std::size_t>(options.panelGridColumns, 1U, 5U)),
-      m_inlineEntryGap(std::max(0.0f, options.inlineEntryGap)), m_matchAdjacentSpacing(options.matchAdjacentSpacing) {
+      m_inlineEntryGap(std::max(0.0f, options.inlineEntryGap)), m_matchAdjacentSpacing(options.matchAdjacentSpacing),
+      m_customItemSize(options.customItemSize) {
   auto normalizeTokens = [](std::vector<std::string>& tokens) {
     std::vector<std::string> normalized;
     normalized.reserve(tokens.size());
@@ -468,7 +469,7 @@ void TrayWidget::rebuild(Renderer& renderer) {
       break;
     }
     if (hasDrawerItems) {
-      const float itemSize = Style::baseGlyphSize * m_contentScale;
+      const float itemSize = m_customItemSize.value_or(Style::baseGlyphSize) * m_contentScale;
       auto triggerArea = std::make_unique<InputArea>();
       auto* triggerPtr = triggerArea.get();
       m_drawerTrigger = triggerPtr;
@@ -525,7 +526,7 @@ void TrayWidget::rebuild(Renderer& renderer) {
       continue;
     }
     const std::string iconPath = resolveIconPath(item);
-    const float itemSize = Style::baseGlyphSize * m_contentScale;
+    const float itemSize = m_customItemSize.value_or(Style::baseGlyphSize) * m_contentScale;
     const float iconSize = itemSize;
     const int iconRequestSize = std::max(32, static_cast<int>(std::round(iconSize * 2.0f)));
 
@@ -853,7 +854,9 @@ std::string TrayWidget::resolveIconPath(const TrayItemInfo& item) {
   }
 
   // Match the on-screen request size used when the icon is loaded (see rebuild).
-  const int iconTargetSize = std::max(32, static_cast<int>(std::round(Style::baseGlyphSize * m_contentScale * 2.0f)));
+  const int iconTargetSize = std::max(
+      32, static_cast<int>(std::round(m_customItemSize.value_or(Style::baseGlyphSize) * m_contentScale * 2.0f))
+  );
 
   auto resolveMapped = [this, iconTargetSize](const std::string& name) -> std::string {
     if (name.empty()) {

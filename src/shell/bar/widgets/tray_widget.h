@@ -29,6 +29,7 @@ struct TrayWidgetOptions {
   std::size_t panelGridColumns = 3;
   float inlineEntryGap = Style::spaceXs;
   bool matchAdjacentSpacing = false;
+  std::optional<float> customItemSize;
 };
 
 class TrayWidget : public Widget {
@@ -80,6 +81,7 @@ private:
   std::size_t m_panelGridColumns = 3;
   float m_inlineEntryGap = Style::spaceXs;
   bool m_matchAdjacentSpacing = false;
+  std::optional<float> m_customItemSize;
   bool m_appIconColorizeDirty = false;
   InputArea* m_drawerTrigger = nullptr;
   Glyph* m_drawerChevron = nullptr;

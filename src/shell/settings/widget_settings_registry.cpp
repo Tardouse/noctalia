@@ -934,6 +934,9 @@ namespace settings {
         auto cols = intSpec("drawer_columns", 3, 1.0, 5.0, 1.0);
         cols.visibleWhen = drawerOn;
         add(std::move(cols));
+        auto drawerItemSize = doubleSpec("drawer_item_size", static_cast<double>(Style::baseGlyphSize), 8.0, 64.0, 1.0);
+        drawerItemSize.visibleWhen = drawerOn;
+        add(std::move(drawerItemSize));
         auto detachedPanel = boolSpec("detached_panel", false);
         detachedPanel.visibleWhen = drawerOn;
         add(std::move(detachedPanel));
