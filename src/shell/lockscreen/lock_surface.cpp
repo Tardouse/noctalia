@@ -597,7 +597,9 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
       lockscreen_login_box::panelContentLayout(panelWidth, panelHeight, loginStyle.showLoginButton);
   const float gap = Style::spaceSm;
   const float controlHeight = contentLayout.controlHeight;
-  const float contentTop = panelY + contentLayout.contentTop;
+  const float hintBand = hintVisible ? (Style::spaceXs + hintHeight) : 0.0f;
+  const float groupHeight = controlHeight + hintBand;
+  const float contentTop = panelY + std::max(0.0f, (panelHeight - groupHeight) * 0.5f);
   const float contentLeft = panelX + contentLayout.contentLeft;
   const float inputRightEdge = contentLeft + contentLayout.inputWidth;
 
@@ -633,13 +635,11 @@ void LockSurface::layoutScene(std::uint32_t width, std::uint32_t height) {
     m_loginButton->layout(*renderer);
   }
 
-  // Status/hint line: the input stays vertically centered in the panel; the hint is centered
-  // horizontally and within the bottom margin below the input, without enlarging the panel.
+  // Status/hint line: centered horizontally, placed in the reserved band directly below the input.
   if (hintVisible) {
     const float inputBottom = contentTop + controlHeight;
-    const float bottomRegion = std::max(0.0f, panelY + panelHeight - inputBottom - hintHeight);
     const float labelX = panelX + (panelWidth - m_statusLabel->width()) * 0.5f;
-    const float labelY = inputBottom + bottomRegion * 0.5f;
+    const float labelY = inputBottom + Style::spaceXs;
     m_statusLabel->setPosition(labelX, labelY);
   }
 }
