@@ -126,7 +126,15 @@ void WorkspacesWidget::doUpdate(Renderer& renderer) {
   syncWidgetVisibility(showWidget);
   if (!showWidget) {
     if (!m_cachedState.empty() || !m_items.empty()) {
+      cancelAnimation();
       m_cachedState.clear();
+      m_items.clear();
+      if (m_container != nullptr) {
+        m_container->setFrameSize(0.0f, 0.0f);
+        while (!m_container->children().empty()) {
+          m_container->removeChild(m_container->children().back().get());
+        }
+      }
       m_rebuildPending = true;
       if (root() != nullptr) {
         root()->markLayoutDirty();
@@ -141,6 +149,7 @@ void WorkspacesWidget::doUpdate(Renderer& renderer) {
 
   bool structuralChange = current.size() != m_cachedState.size();
   bool activeChange = false;
+  bool hideWhenEmptyTransition = false;
   if (!structuralChange) {
     for (std::size_t i = 0; i < current.size(); ++i) {
       const auto& a = current[i];
@@ -155,10 +164,13 @@ void WorkspacesWidget::doUpdate(Renderer& renderer) {
       if (a.occupied != b.occupied) {
         activeChange = true;
       }
+      if (m_hideWhenEmpty && isEmptyWorkspace(a) != isEmptyWorkspace(b)) {
+        hideWhenEmptyTransition = true;
+      }
     }
   }
 
-  if (!structuralChange && !activeChange) {
+  if (!structuralChange && !activeChange && !hideWhenEmptyTransition) {
     if (m_focusedOutputOnly) {
       const bool isFocused = isFocusedOutput();
       if (isFocused != m_wasFocusedOutput) {
@@ -185,7 +197,7 @@ void WorkspacesWidget::doUpdate(Renderer& renderer) {
     );
   }
 
-  if (structuralChange) {
+  if (structuralChange || hideWhenEmptyTransition) {
     m_rebuildPending = true;
     if (root() != nullptr) {
       root()->markLayoutDirty();
@@ -350,9 +362,17 @@ void WorkspacesWidget::rebuild(Renderer& renderer) {
 
   float total = 0.0f;
   for (const auto& item : m_items) {
-    total = std::max(total, item.currentX + item.currentWidth);
+    if (item.currentWidth > 0.0f) {
+      total = std::max(total, item.currentX + item.currentWidth);
+    }
   }
-  if (m_isVertical) {
+  if (total <= 0.0f) {
+    if (m_isVertical) {
+      m_container->setFrameSize(m_indicatorHeight, 0.0f);
+    } else {
+      m_container->setFrameSize(0.0f, m_indicatorHeight);
+    }
+  } else if (m_isVertical) {
     m_container->setFrameSize(m_indicatorHeight, total);
   } else {
     m_container->setFrameSize(total, m_indicatorHeight);
@@ -380,9 +400,17 @@ void WorkspacesWidget::updateContainerSize() {
   }
   float total = 0.0f;
   for (const auto& item : m_items) {
-    total = std::max(total, item.currentX + item.currentWidth);
+    if (item.currentWidth > 0.0f) {
+      total = std::max(total, item.currentX + item.currentWidth);
+    }
   }
-  if (m_isVertical) {
+  if (total <= 0.0f) {
+    if (m_isVertical) {
+      m_container->setFrameSize(m_indicatorHeight, 0.0f);
+    } else {
+      m_container->setFrameSize(0.0f, m_indicatorHeight);
+    }
+  } else if (m_isVertical) {
     m_container->setFrameSize(m_indicatorHeight, total);
   } else {
     m_container->setFrameSize(total, m_indicatorHeight);
