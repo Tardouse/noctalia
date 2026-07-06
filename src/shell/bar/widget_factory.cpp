@@ -463,6 +463,7 @@ std::unique_ptr<Widget> WidgetFactory::create(
   }
 
   if (type == "sysmon") {
+    const bool verticalBar = barPosition == "left" || barPosition == "right";
     std::string statStr = wc != nullptr ? wc->getString("stat", "cpu_usage") : std::string("cpu_usage");
     std::string path = wc != nullptr ? wc->getString("path", "/") : std::string("/");
     SysmonStat stat = SysmonStat::CpuUsage;
@@ -496,6 +497,9 @@ std::unique_ptr<Widget> WidgetFactory::create(
       displayMode = SysmonDisplayMode::Text;
     else if (display == "graph")
       displayMode = SysmonDisplayMode::Graph;
+    if (verticalBar && displayMode == SysmonDisplayMode::Graph) {
+      displayMode = SysmonDisplayMode::Gauge;
+    }
     SysmonWidgetOptions options{
         .stat = stat,
         .diskPath = std::move(path),
