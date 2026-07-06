@@ -41,7 +41,7 @@ public:
   PluginLauncherProvider(scripting::PluginRuntimeContext context, PluginLauncherProviderOptions options);
   ~PluginLauncherProvider() override;
 
-  [[nodiscard]] std::string_view prefix() const override { return m_prefix; }
+  [[nodiscard]] std::string_view defaultPrefix() const override { return m_prefix; }
   [[nodiscard]] std::string_view id() const override { return m_entryId; }
   [[nodiscard]] std::string displayName() const override { return m_displayName.empty() ? m_entryId : m_displayName; }
   [[nodiscard]] std::string_view defaultGlyphName() const override {

@@ -13,7 +13,7 @@ class DmenuProvider : public LauncherProvider {
 public:
   DmenuProvider(DmenuEntryConfig entry, ClipboardService* clipboard);
 
-  [[nodiscard]] std::string_view prefix() const override { return m_prefix; }
+  [[nodiscard]] std::string_view defaultPrefix() const override { return m_prefix; }
   [[nodiscard]] std::string_view id() const override { return m_id; }
   [[nodiscard]] std::string displayName() const override;
   [[nodiscard]] std::string_view defaultGlyphName() const override { return m_glyph; }

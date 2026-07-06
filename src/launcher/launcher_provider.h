@@ -35,7 +35,14 @@ class LauncherProvider {
 public:
   virtual ~LauncherProvider() = default;
 
-  [[nodiscard]] virtual std::string_view prefix() const = 0;
+  [[nodiscard]] virtual std::string_view prefix() const {
+    return m_customPrefix.has_value() ? *m_customPrefix : defaultPrefix();
+  }
+  [[nodiscard]] virtual std::string_view defaultPrefix() const = 0;
+
+  virtual void setCustomPrefix(std::optional<std::string> prefix) { m_customPrefix = std::move(prefix); }
+  [[nodiscard]] virtual bool allowCustomPrefix() const { return true; }
+
   // Stable opaque identity. Keys usage-tracking persistence and activation dispatch,
   // so it must never change or be translated.
   [[nodiscard]] virtual std::string_view id() const = 0;
@@ -82,4 +89,7 @@ public:
   [[nodiscard]] virtual std::vector<LauncherResult> query(std::string_view text) const = 0;
 
   virtual bool activate(const LauncherResult& result) = 0;
+
+private:
+  std::optional<std::string> m_customPrefix;
 };
