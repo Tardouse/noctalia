@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <linux/input-event-codes.h>
 #include <memory>
 #include <numbers>
@@ -46,6 +47,13 @@ namespace {
   // Scale falloff radius — tighter than hit padding so neighbors stay closer to rest size.
   constexpr float kHoverZoomFalloffInfluence = 1.5f;
   constexpr std::int32_t kHoverZoomZScale = 100;
+
+  [[nodiscard]] int dockIconDecodeTargetSize(const DockConfig& cfg) {
+    const float baseScale = std::max(cfg.activeScale, cfg.inactiveScale);
+    const float hoverScale = cfg.magnification ? std::max(1.0f, cfg.magnificationScale) : 1.0f;
+    const float peakScale = std::max(1.0f, baseScale * hoverScale);
+    return std::max(1, static_cast<int>(std::round(static_cast<float>(cfg.iconSize) * peakScale)));
+  }
 
   void applyHoverIconVisual(Node* iconNode, DockEdge edge, float baseX, float baseY, float iconSize, float scale) {
     if (iconNode == nullptr) {
@@ -373,6 +381,7 @@ namespace shell::dock {
     const float cellCross = iSize + 2.0f * kCellPad;
     const float glyphSize = iSize * kLauncherGlyphSizeRatio;
     const float glyphOffsetY = kCellPad + (iSize - glyphSize) * 0.5f;
+    const int iconDecodeTarget = dockIconDecodeTargetSize(cfg);
 
     auto areaNode = std::make_unique<InputArea>();
     if (!vert) {
@@ -387,8 +396,8 @@ namespace shell::dock {
           .fit = ImageFit::Contain,
           .width = glyphSize,
           .height = glyphSize,
-          .configure = [&cfg, glyphOffsetY, renderContextPtr](Image& image) {
-            image.setSourceFile(*renderContextPtr, cfg.launcherCustomImage, cfg.iconSize, true);
+          .configure = [&cfg, glyphOffsetY, renderContextPtr, iconDecodeTarget](Image& image) {
+            image.setSourceFile(*renderContextPtr, cfg.launcherCustomImage, iconDecodeTarget, true);
             image.setForegroundTint(
                 cfg.launcherCustomImageColorize ? std::optional<ColorSpec>{colorSpecFromRole(ColorRole::OnSurface)}
                                                 : std::nullopt
@@ -448,6 +457,7 @@ namespace shell::dock {
     const DockLauncherPosition launcherPosition = cfg.launcherPosition;
     const bool vert = shell::dock::isVerticalEdge(edge);
     const auto iSize = static_cast<float>(cfg.iconSize);
+    const int iconDecodeTarget = dockIconDecodeTargetSize(cfg);
     auto clickContext = std::make_shared<DockItemClickContext>(DockItemClickContext{
         .config = deps.model.config,
         .callbacks = callbacks,
@@ -512,7 +522,7 @@ namespace shell::dock {
 
       std::string iconPath;
       if (!model.entry.icon.empty()) {
-        iconPath = deps.iconResolver.resolve(model.entry.icon, cfg.iconSize);
+        iconPath = deps.iconResolver.resolve(model.entry.icon, iconDecodeTarget);
       }
       if (iconPath.empty()) {
         if (const auto internal = internal_apps::metadataForDesktopEntry(model.entry); internal.has_value()) {
@@ -520,16 +530,17 @@ namespace shell::dock {
         }
       }
       if (iconPath.empty()) {
-        iconPath = deps.iconResolver.resolve("application-x-executable", cfg.iconSize);
+        iconPath = deps.iconResolver.resolve("application-x-executable", iconDecodeTarget);
       }
       RenderContext* renderContext = &deps.renderContext;
       auto iconImg = ui::image({
           .width = iSize,
           .height = iSize,
-          .configure = [renderContext, iconPath, &cfg, &shell = deps.model.config.config().shell](Image& image) {
+          .configure = [renderContext, iconPath, iconDecodeTarget,
+                        &shell = deps.model.config.config().shell](Image& image) {
             image.setAppIconColorization(effectiveShellAppIconColorizationTint(shell));
             if (!iconPath.empty() && renderContext != nullptr) {
-              image.setSourceFile(*renderContext, iconPath, cfg.iconSize, true);
+              image.setSourceFile(*renderContext, iconPath, iconDecodeTarget, true);
             }
             image.setPosition(kCellPad, kCellPad);
           },
