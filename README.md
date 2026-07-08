@@ -151,21 +151,6 @@ sudo apt install meson g++ just \
   libjemalloc-dev
 ```
 
-### AerynOS
-```sh
-sudo moss it meson build-essential \
-  wayland-devel wayland-protocols-devel \
-  mesa-libegl-devel mesa-libgl-devel \
-  freetype-devel fontconfig-devel \
-  cairo-devel pango-devel harfbuzz-devel \
-  libxkbcommon-devel glib2-devel \
-  sdbus-cpp-devel pipewire-devel wireplumber-devel \
-  linux-pam-devel polkit-devel \
-  curl-devel libwebp-devel librsvg-devel \
-  libqalculate-devel libxml2-devel \
-  extra-cmake-modules jemalloc-devel
-```
-
 ### Void Linux
 ```sh
 sudo xbps-install meson ninja pkg-config git \
