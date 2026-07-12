@@ -22,7 +22,7 @@ if is_libcxx
 endif
 
 # Sanitizers are enabled via meson's built-in -Db_sanitize=address,undefined.
-# pipewire_lsan.cpp is only needed when address sanitizer is active.
+# lsan_suppressions.cpp is only needed when address sanitizer is active.
 sanitize = get_option('b_sanitize') != 'none'
 
 # Hardened standard-library assertions in debug builds only. A std::clamp(v, lo, hi)
@@ -872,7 +872,7 @@ _noctalia_sources = files(
 )
 
 if sanitize
-  _noctalia_sources += files('src/pipewire/pipewire_lsan.cpp')
+  _noctalia_sources += files('src/core/lsan_suppressions.cpp')
 endif
 
 git_program = find_program('git', required: false)
