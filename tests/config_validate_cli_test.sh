@@ -22,7 +22,7 @@ esac
 warn_output=$("$noctalia_bin" config validate tests/config_validate/warn-only.toml 2>&1) \
   || fail "warning-only config should validate"
 case "$warn_output" in
-  *"WARN  shell.ui_scl: unknown setting"*) ;;
+  *"WARN  accessibility.ui_scl: unknown setting"*) ;;
   *) fail "warning-only config did not report the unknown setting" ;;
 esac
 

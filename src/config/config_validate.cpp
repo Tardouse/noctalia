@@ -591,6 +591,7 @@ namespace noctalia::config {
 
     void appendMergedConfigDiagnostics(const toml::table& merged, schema::Diagnostics& diag) {
       checkSection(merged, "shell", schema::shellSchema(), diag);
+      checkSection(merged, "accessibility", schema::accessibilitySchema(), diag);
       checkSection(
           merged, "wallpaper", schema::wallpaperSchema(), diag,
           {"wallpaper.default", "wallpaper.last", "wallpaper.monitors", "wallpaper.favorite"}
@@ -644,6 +645,7 @@ namespace noctalia::config {
       // Unknown top-level sections.
       static const std::unordered_set<std::string> kKnownSections = {
           "shell",
+          "accessibility",
           "wallpaper",
           "theme",
           "backdrop",
