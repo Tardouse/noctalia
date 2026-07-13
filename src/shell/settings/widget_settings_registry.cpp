@@ -982,7 +982,10 @@ namespace settings {
         for (auto& spec : commonSpecs) {
           if (spec.schema.key == "capsule_radius") {
             spec.descriptionKey = "settings.widgets.settings.capsule-radius.taskbar-description";
-            spec.visibleWhen = groupedWorkspaceSettings;
+            spec.visibleWhen = WidgetSettingVisibility{
+                WidgetSettingVisibilityCondition{"capsule", {"true"}},
+                WidgetSettingVisibilityCondition{"group_by_workspace", {"true"}},
+            };
             break;
           }
         }
