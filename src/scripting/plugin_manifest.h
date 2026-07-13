@@ -27,9 +27,9 @@ namespace scripting {
     Color,
   };
 
+  // `labelKey` is a plugin translation key. When empty the raw `value` is shown.
   struct ManifestSelectOption {
     std::string value;
-    std::string label;
     std::string labelKey;
   };
 
@@ -38,11 +38,11 @@ namespace scripting {
     std::vector<std::string> values;
   };
 
+  // Labels and descriptions are always plugin translation keys, resolved against the
+  // plugin's translations/<lang>.json. `labelKey` is mandatory; `descriptionKey` is optional.
   struct ManifestField {
     std::string key;
-    std::string label;
     std::string labelKey;
-    std::string description;
     std::string descriptionKey;
     ManifestFieldType type = ManifestFieldType::String;
 

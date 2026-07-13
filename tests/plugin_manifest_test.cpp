@@ -107,7 +107,7 @@ int main() {
            "default = \"auto\"\n"
            "options = [\n"
            "  { value = \"auto\", label_key = \"settings.mode.options.auto\" },\n"
-           "  { value = \"manual\", label = \"Manual\" },\n"
+           "  { value = \"manual\", label_key = \"settings.mode.options.manual\" },\n"
            "]\n"
            "[[widget]]\n"
            "id = \"hello\"\n"
@@ -135,7 +135,10 @@ int main() {
       if (setting.options.size() == 2) {
         ok = expectEq(setting.options[0].labelKey, "settings.mode.options.auto", "select option label_key should parse")
             && ok;
-        ok = expectEq(setting.options[1].label, "Manual", "literal select option label should parse") && ok;
+        ok = expectEq(
+                 setting.options[1].labelKey, "settings.mode.options.manual", "second option label_key should parse"
+             )
+            && ok;
       }
     }
     ok = expect(translatedSettingsManifest->entries.size() == 1, "one translated widget entry expected") && ok;
@@ -148,58 +151,99 @@ int main() {
     }
   }
 
-  const auto labelConflictPath = root / "label-conflict/plugin.toml";
+  const auto literalLabelPath = root / "literal-label/plugin.toml";
   ok = writeText(
-           labelConflictPath,
-           "id = \"me/label-conflict\"\n"
-           "name = \"Label Conflict\"\n"
+           literalLabelPath,
+           "id = \"me/literal-label\"\n"
+           "name = \"Literal Label\"\n"
            "min_noctalia = \"5.0.0\"\n"
            "[[setting]]\n"
            "key = \"mode\"\n"
            "label = \"Mode\"\n"
-           "label_key = \"settings.mode.label\"\n"
        )
       && ok;
   error.clear();
-  const auto labelConflict = scripting::parsePluginManifest(labelConflictPath, &error);
-  ok = expect(!labelConflict.has_value(), "label plus label_key should fail") && ok;
-  ok = expectEq(error, "setting 'mode' declares both label and label_key", "label conflict error") && ok;
+  const auto literalLabel = scripting::parsePluginManifest(literalLabelPath, &error);
+  ok = expect(!literalLabel.has_value(), "literal label should fail") && ok;
+  ok = expectEq(error, "setting 'mode' uses 'label'; use 'label_key' instead", "literal label error") && ok;
 
-  const auto descriptionConflictPath = root / "description-conflict/plugin.toml";
+  const auto literalDescriptionPath = root / "literal-description/plugin.toml";
   ok = writeText(
-           descriptionConflictPath,
-           "id = \"me/description-conflict\"\n"
-           "name = \"Description Conflict\"\n"
+           literalDescriptionPath,
+           "id = \"me/literal-description\"\n"
+           "name = \"Literal Description\"\n"
            "min_noctalia = \"5.0.0\"\n"
            "[[setting]]\n"
            "key = \"mode\"\n"
+           "label_key = \"settings.mode.label\"\n"
            "description = \"Mode\"\n"
-           "description_key = \"settings.mode.description\"\n"
        )
       && ok;
   error.clear();
-  const auto descriptionConflict = scripting::parsePluginManifest(descriptionConflictPath, &error);
-  ok = expect(!descriptionConflict.has_value(), "description plus description_key should fail") && ok;
-  ok = expectEq(error, "setting 'mode' declares both description and description_key", "description conflict error")
+  const auto literalDescription = scripting::parsePluginManifest(literalDescriptionPath, &error);
+  ok = expect(!literalDescription.has_value(), "literal description should fail") && ok;
+  ok = expectEq(
+           error, "setting 'mode' uses 'description'; use 'description_key' instead", "literal description error"
+       )
       && ok;
 
-  const auto optionConflictPath = root / "option-conflict/plugin.toml";
+  const auto missingLabelKeyPath = root / "missing-label-key/plugin.toml";
   ok = writeText(
-           optionConflictPath,
-           "id = \"me/option-conflict\"\n"
-           "name = \"Option Conflict\"\n"
+           missingLabelKeyPath,
+           "id = \"me/missing-label-key\"\n"
+           "name = \"Missing Label Key\"\n"
+           "min_noctalia = \"5.0.0\"\n"
+           "[[setting]]\n"
+           "key = \"mode\"\n"
+       )
+      && ok;
+  error.clear();
+  const auto missingLabelKey = scripting::parsePluginManifest(missingLabelKeyPath, &error);
+  ok = expect(!missingLabelKey.has_value(), "setting without label_key should fail") && ok;
+  ok = expectEq(error, "setting 'mode' is missing 'label_key'", "missing label_key error") && ok;
+
+  const auto literalOptionLabelPath = root / "literal-option-label/plugin.toml";
+  ok = writeText(
+           literalOptionLabelPath,
+           "id = \"me/literal-option-label\"\n"
+           "name = \"Literal Option Label\"\n"
            "min_noctalia = \"5.0.0\"\n"
            "[[setting]]\n"
            "key = \"mode\"\n"
            "type = \"select\"\n"
+           "label_key = \"settings.mode.label\"\n"
            "default = \"auto\"\n"
-           "options = [{ value = \"auto\", label = \"Auto\", label_key = \"settings.mode.options.auto\" }]\n"
+           "options = [{ value = \"auto\", label = \"Auto\" }]\n"
        )
       && ok;
   error.clear();
-  const auto optionConflict = scripting::parsePluginManifest(optionConflictPath, &error);
-  ok = expect(!optionConflict.has_value(), "option label plus label_key should fail") && ok;
-  ok = expectEq(error, "setting 'mode' option 'auto' declares both label and label_key", "option label conflict error")
+  const auto literalOptionLabel = scripting::parsePluginManifest(literalOptionLabelPath, &error);
+  ok = expect(!literalOptionLabel.has_value(), "literal select option label should fail") && ok;
+  ok = expectEq(
+           error, "setting 'mode' option 'auto' uses 'label'; use 'label_key' instead", "literal option label error"
+       )
+      && ok;
+
+  const auto missingOptionLabelKeyPath = root / "missing-option-label-key/plugin.toml";
+  ok = writeText(
+           missingOptionLabelKeyPath,
+           "id = \"me/missing-option-label-key\"\n"
+           "name = \"Missing Option Label Key\"\n"
+           "min_noctalia = \"5.0.0\"\n"
+           "[[setting]]\n"
+           "key = \"mode\"\n"
+           "type = \"select\"\n"
+           "label_key = \"settings.mode.label\"\n"
+           "default = \"auto\"\n"
+           "options = [\"auto\", \"manual\"]\n"
+       )
+      && ok;
+  error.clear();
+  const auto missingOptionLabelKey = scripting::parsePluginManifest(missingOptionLabelKeyPath, &error);
+  ok = expect(!missingOptionLabelKey.has_value(), "bare string select options should fail") && ok;
+  ok = expectEq(
+           error, "setting 'mode' option must be a table with value and label_key", "bare option error"
+       )
       && ok;
 
   const auto launcherManifestPath = root / "launcher/plugin.toml";
@@ -279,6 +323,7 @@ int main() {
            "[[widget.setting]]\n"
            "key = \"paths\"\n"
            "type = \"string_list\"\n"
+           "label_key = \"settings.paths.label\"\n"
            "default = [\"/dev/input/by-id/a\", \"/dev/input/by-path/b\"]\n"
        )
       && ok;

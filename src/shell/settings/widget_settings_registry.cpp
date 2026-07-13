@@ -1097,22 +1097,22 @@ namespace settings {
   std::vector<WidgetSettingSpec> manifestSettingSpecs(
       const std::vector<scripting::ManifestField>& fields, const scripting::PluginTranslationCatalog* translations
   ) {
+    // Host-injected panel shell fields carry no label key; their labels come from
+    // pluginPanelShellSettingSpecs() and callers drop the specs produced here.
+    const auto translate = [&](const std::string& key) {
+      if (key.empty() || translations == nullptr) {
+        return key;
+      }
+      return translations->translate(key);
+    };
+
     std::vector<WidgetSettingSpec> specs;
     specs.reserve(fields.size());
     for (const auto& field : fields) {
       WidgetSettingSpec spec;
       spec.schema.key = field.key;
-      if (!field.labelKey.empty()) {
-        spec.literalLabel = translations != nullptr ? translations->translate(field.labelKey) : field.labelKey;
-      } else {
-        spec.literalLabel = field.label.empty() ? field.key : field.label;
-      }
-      if (!field.descriptionKey.empty()) {
-        spec.literalDescription =
-            translations != nullptr ? translations->translate(field.descriptionKey) : field.descriptionKey;
-      } else {
-        spec.literalDescription = field.description;
-      }
+      spec.literalLabel = translate(field.labelKey);
+      spec.literalDescription = translate(field.descriptionKey);
       spec.advanced = field.advanced;
       spec.schema.minValue = field.minValue;
       spec.schema.maxValue = field.maxValue;
@@ -1150,11 +1150,7 @@ namespace settings {
         spec.literalLabels = true;
         for (const auto& opt : field.options) {
           spec.schema.enumValues.push_back(opt.value);
-          std::string label = opt.label;
-          if (!opt.labelKey.empty()) {
-            label = translations != nullptr ? translations->translate(opt.labelKey) : opt.labelKey;
-          }
-          spec.options.push_back(WidgetSettingSelectOption{.value = opt.value, .labelKey = std::move(label)});
+          spec.options.push_back(WidgetSettingSelectOption{.value = opt.value, .labelKey = translate(opt.labelKey)});
         }
         break;
       case scripting::ManifestFieldType::Color:

@@ -161,24 +161,27 @@ namespace scripting {
         return true;
       }
       for (const auto& node : *options) {
-        if (const auto* optTable = node.as_table()) {
-          ManifestSelectOption opt;
-          opt.value = tableString(*optTable, "value");
-          opt.label = tableString(*optTable, "label");
-          opt.labelKey = tableString(*optTable, "label_key");
-          if (!opt.label.empty() && !opt.labelKey.empty()) {
-            error = "setting '" + out.key + "' option '" + opt.value + "' declares both label and label_key";
-            return false;
-          }
-          if (opt.label.empty() && opt.labelKey.empty()) {
-            opt.label = opt.value;
-          }
-          if (!opt.value.empty()) {
-            out.options.push_back(std::move(opt));
-          }
-        } else if (auto value = node.value<std::string>()) {
-          out.options.push_back(ManifestSelectOption{.value = *value, .label = *value, .labelKey = {}});
+        const auto* optTable = node.as_table();
+        if (optTable == nullptr) {
+          error = "setting '" + out.key + "' option must be a table with value and label_key";
+          return false;
         }
+        ManifestSelectOption opt;
+        opt.value = tableString(*optTable, "value");
+        if (opt.value.empty()) {
+          error = "setting '" + out.key + "' option is missing 'value'";
+          return false;
+        }
+        if (optTable->contains("label")) {
+          error = "setting '" + out.key + "' option '" + opt.value + "' uses 'label'; use 'label_key' instead";
+          return false;
+        }
+        opt.labelKey = tableString(*optTable, "label_key");
+        if (opt.labelKey.empty()) {
+          error = "setting '" + out.key + "' option '" + opt.value + "' is missing 'label_key'";
+          return false;
+        }
+        out.options.push_back(std::move(opt));
       }
       return true;
     }
@@ -223,18 +226,20 @@ namespace scripting {
         return out;
       }
       out.type = parseFieldType(tableString(field, "type", "string"));
-      out.label = tableString(field, "label");
+      if (field.contains("label")) {
+        error = "setting '" + out.key + "' uses 'label'; use 'label_key' instead";
+        return std::nullopt;
+      }
+      if (field.contains("description")) {
+        error = "setting '" + out.key + "' uses 'description'; use 'description_key' instead";
+        return std::nullopt;
+      }
       out.labelKey = tableString(field, "label_key");
-      if (!out.label.empty() && !out.labelKey.empty()) {
-        error = "setting '" + out.key + "' declares both label and label_key";
+      if (out.labelKey.empty()) {
+        error = "setting '" + out.key + "' is missing 'label_key'";
         return std::nullopt;
       }
-      out.description = tableString(field, "description");
       out.descriptionKey = tableString(field, "description_key");
-      if (!out.description.empty() && !out.descriptionKey.empty()) {
-        error = "setting '" + out.key + "' declares both description and description_key";
-        return std::nullopt;
-      }
       out.advanced = tableBool(field, "advanced", false);
       out.minValue = tableNumber(field, "min");
       out.maxValue = tableNumber(field, "max");
