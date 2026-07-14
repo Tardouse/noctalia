@@ -80,6 +80,7 @@
 #include "system/brightness_service.h"
 #include "system/distro_info.h"
 #include "system/easyeffects_service.h"
+#include "system/keyboard_backlight_service.h"
 #include "system/system_monitor_service.h"
 #include "ui/app_icon_colorization.h"
 #include "ui/controls/input.h"
@@ -543,6 +544,33 @@ void Application::initIpc() {
     m_brightnessService->registerIpc(m_ipcService, [this]() {
       m_brightnessOsd.suppressFor(std::chrono::milliseconds(250));
     });
+  }
+  if (m_keyboardBacklightService != nullptr) {
+    m_keyboardBacklightService->registerIpc(m_ipcService);
+    m_ipcService.registerHandler(
+        "keyboard-backlight-osd",
+        [this](const std::string& args) -> std::string {
+          const auto parts = noctalia::ipc::splitWords(args);
+          if (parts.size() != 1) {
+            return "error: keyboard-backlight-osd requires <value>\n";
+          }
+          int value = 0;
+          for (const char c : parts[0]) {
+            if (c < '0' || c > '9') {
+              return "error: invalid keyboard backlight value (use 0-100 for %)\n";
+            }
+            value = value * 10 + (c - '0');
+          }
+          if (value < 0 || value > 100) {
+            return "error: invalid keyboard backlight value (use 0-100 for %)\n";
+          }
+          const int maxBrightness = m_keyboardBacklightService->maxBrightness();
+          const int raw = static_cast<int>(std::round(value / 100.0 * maxBrightness));
+          m_keyboardBacklightOsd.showValue(raw, maxBrightness);
+          return "ok\n";
+        },
+        "keyboard-backlight-osd <value>", "Show keyboard backlight OSD without changing brightness"
+    );
   }
   m_ipcService.registerHandler(
       "brightness-osd",

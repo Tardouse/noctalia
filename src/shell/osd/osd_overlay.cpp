@@ -70,6 +70,8 @@ namespace {
       return kinds.media;
     case OsdKind::Privacy:
       return kinds.privacy;
+    case OsdKind::KeyboardBacklight:
+      return kinds.keyboardBacklight;
     }
     return true;
   }

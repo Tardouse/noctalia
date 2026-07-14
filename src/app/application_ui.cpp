@@ -741,6 +741,7 @@ void Application::initNotificationAndOsd() {
   if (m_brightnessService != nullptr) {
     m_brightnessOsd.primeFromService(*m_brightnessService);
   }
+  m_keyboardBacklightOsd.bindOverlay(m_osdOverlay);
   if constexpr (kLockKeysEnabled) {
     m_lockKeysOsd.bindOverlay(m_osdOverlay);
     m_lockKeysOsd.primeFromService(m_lockKeysService);

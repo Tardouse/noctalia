@@ -2646,6 +2646,10 @@
           "description": "Show an OSD popup when the power profile changes",
           "label": "Power Profile"
         },
+        "osd-kinds-keyboard-backlight": {
+          "description": "Show an OSD popup when the keyboard backlight level changes",
+          "label": "Keyboard Backlight"
+        },
         "osd-kinds-privacy": {
           "description": "Show an OSD popup when microphone, camera, or screen-share capture starts or stops",
           "label": "Privacy"

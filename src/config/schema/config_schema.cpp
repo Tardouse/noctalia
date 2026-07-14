@@ -54,6 +54,7 @@ namespace noctalia::config::schema {
         field(&OsdKindsConfig::keyboardLayout, "keyboard_layout"),
         field(&OsdKindsConfig::media, "media"),
         field(&OsdKindsConfig::privacy, "privacy"),
+        field(&OsdKindsConfig::keyboardBacklight, "keyboard_backlight"),
     };
     return s;
   }
