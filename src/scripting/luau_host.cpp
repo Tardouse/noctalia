@@ -799,6 +799,30 @@ namespace {
     return 1;
   }
 
+  int luau_pluginDataDir(lua_State* L) {
+    auto* host = hostForState(L);
+    if (host == nullptr) {
+      lua_pushnil(L);
+      lua_pushstring(L, "no host");
+      return 2;
+    }
+    const std::string dir = FileUtils::pluginDataDir(host->pluginId());
+    if (dir.empty()) {
+      lua_pushnil(L);
+      lua_pushstring(L, "no state directory");
+      return 2;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    if (ec) {
+      lua_pushnil(L);
+      lua_pushstring(L, ec.message().c_str());
+      return 2;
+    }
+    lua_pushlstring(L, dir.data(), dir.size());
+    return 1;
+  }
+
   std::string numberToString(double n) {
     if (std::isfinite(n) && n == std::floor(n)) {
       return std::to_string(static_cast<long long>(n));
@@ -1233,6 +1257,7 @@ namespace {
       {"fileInfo", luau_fileInfo},
       {"listDir", luau_listDir},
       {"pluginDir", luau_pluginDir},
+      {"pluginDataDir", luau_pluginDataDir},
       {"tr", luau_tr},
       {"trp", luau_trp},
       {"http", luau_http},

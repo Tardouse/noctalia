@@ -85,6 +85,7 @@ public:
   [[nodiscard]] const std::filesystem::path& pluginDir() const noexcept { return m_pluginDir; }
   // The owning plugin id ("author/plugin"): scopes the shared state store.
   void setPluginId(std::string id) { m_pluginId = std::move(id); }
+  [[nodiscard]] const std::string& pluginId() const noexcept { return m_pluginId; }
   void setStateWatchHandler(StateWatchHandler handler) { m_stateWatchHandler = std::move(handler); }
 
   // noctalia.state.* — host-mediated per-plugin shared data.
