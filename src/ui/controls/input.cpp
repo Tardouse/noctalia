@@ -426,7 +426,9 @@ void Input::setPasswordMode(bool enabled) {
     return;
   }
   m_passwordMode = enabled;
-  if (!m_passwordMode) {
+  if (m_passwordMode) {
+    clearEditHistory();
+  } else {
     syncPasswordGlyphNodes(0);
   }
   updateDisplayText();
@@ -1138,13 +1140,15 @@ void Input::handleKey(std::uint32_t sym, std::uint32_t utf32, std::uint32_t modi
     m_selectionAnchor = 0;
     m_cursorPos = m_value.size();
   } else if (copyShortcut) {
-    if (g_clipboard != nullptr && hasSelection()) {
+    if (g_clipboard != nullptr && hasSelection() && !m_passwordMode) {
       g_clipboard->setClipboardText(m_value.substr(selectionStart(), selectionEnd() - selectionStart()));
     }
   } else if (cutShortcut) {
     if (g_clipboard != nullptr && hasSelection()) {
       pushUndoSnapshot(EditCoalesceKind::Discrete);
-      g_clipboard->setClipboardText(m_value.substr(selectionStart(), selectionEnd() - selectionStart()));
+      if (!m_passwordMode) {
+        g_clipboard->setClipboardText(m_value.substr(selectionStart(), selectionEnd() - selectionStart()));
+      }
       deleteSelection();
       changed = true;
     }
@@ -1765,6 +1769,10 @@ std::size_t Input::wordStartForByteOffset(std::size_t offset) const {
     return 0;
   }
 
+  if (m_passwordMode) {
+    return 0;
+  }
+
   std::size_t pos = std::min(offset, m_value.size());
   if (pos == m_value.size() && pos > 0) {
     pos = prevCharPos(m_value, pos);
@@ -1789,6 +1797,10 @@ std::size_t Input::wordEndForByteOffset(std::size_t offset) const {
     return 0;
   }
 
+  if (m_passwordMode) {
+    return m_value.size();
+  }
+
   std::size_t pos = std::min(offset, m_value.size());
   if (pos == m_value.size() && pos > 0) {
     pos = prevCharPos(m_value, pos);
@@ -1807,6 +1819,10 @@ std::size_t Input::wordEndForByteOffset(std::size_t offset) const {
 
 std::size_t Input::previousWordStartForByteOffset(std::size_t offset) const {
   if (m_value.empty()) {
+    return 0;
+  }
+
+  if (m_passwordMode) {
     return 0;
   }
 
@@ -1833,6 +1849,10 @@ std::size_t Input::nextWordStartForByteOffset(std::size_t offset) const {
     return 0;
   }
 
+  if (m_passwordMode) {
+    return m_value.size();
+  }
+
   std::size_t pos = std::min(offset, m_value.size());
   if (pos < m_value.size() && isWordCodepoint(m_value, pos)) {
     while (pos < m_value.size() && isWordCodepoint(m_value, pos)) {
@@ -1848,6 +1868,10 @@ std::size_t Input::nextWordStartForByteOffset(std::size_t offset) const {
 std::size_t Input::nextWordEndForByteOffset(std::size_t offset) const {
   if (m_value.empty()) {
     return 0;
+  }
+
+  if (m_passwordMode) {
+    return m_value.size();
   }
 
   std::size_t pos = std::min(offset, m_value.size());
@@ -1942,6 +1966,12 @@ void Input::resetUndoCoalescing() {
 }
 
 void Input::pushUndoSnapshot(EditCoalesceKind kind) {
+  // Password mode keeps no edit history so the plaintext is never retained in a
+  // snapshot and can't be restored (e.g. Ctrl+Z after clearing the field).
+  if (m_passwordMode) {
+    resetUndoCoalescing();
+    return;
+  }
   if (kind == EditCoalesceKind::None) {
     resetUndoCoalescing();
     return;
@@ -1974,9 +2004,9 @@ void Input::pushUndoSnapshot(EditCoalesceKind kind) {
 
 void Input::noteTypingEditEnd() { m_typingCoalesceCursorPos = m_cursorPos; }
 
-bool Input::undoEdit() { return restoreFromHistory(m_undoStack, m_redoStack); }
+bool Input::undoEdit() { return !m_passwordMode && restoreFromHistory(m_undoStack, m_redoStack); }
 
-bool Input::redoEdit() { return restoreFromHistory(m_redoStack, m_undoStack); }
+bool Input::redoEdit() { return !m_passwordMode && restoreFromHistory(m_redoStack, m_undoStack); }
 
 bool Input::restoreFromHistory(std::vector<EditSnapshot>& source, std::vector<EditSnapshot>& target) {
   if (source.empty()) {
