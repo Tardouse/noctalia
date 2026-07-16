@@ -305,6 +305,7 @@ location = "https://example.invalid/bad"
     c.osd.orientation = "vertical";
     c.osd.scale = 1.4f;
     c.osd.backgroundOpacity = 0.42f;
+    c.osd.border = false;
     c.osd.offsetX = 33;
     c.osd.offsetY = 11;
     c.osd.monitors = {"DP-1", "HDMI-A-1"};
@@ -329,27 +330,29 @@ location = "https://example.invalid/bad"
     c.location.latitude = 52.52;
     c.location.longitude = 13.405;
     c.notification = NotificationConfig{
-        false,
-        false,
-        false,
-        "bottom_left",
-        "overlay",
-        1.3f,
-        0.5f,
-        12,
-        6,
-        {"DP-2"},
-        false,
-        {NotificationFilterConfig{
-            .name = "discord",
-            .enabled = true,
-            .match = "discord",
-            .showToast = false,
-            .saveHistory = false,
-            .playSound = false,
-            .allowPermanent = false,
-            .allowedUrgencies = {"normal", "critical"},
-        }},
+        .enableDaemon = false,
+        .showAppName = false,
+        .showActions = false,
+        .position = "bottom_left",
+        .layer = "overlay",
+        .scale = 1.3f,
+        .backgroundOpacity = 0.5f,
+        .border = false,
+        .offsetX = 12,
+        .offsetY = 6,
+        .monitors = {"DP-2"},
+        .collapseOnDismiss = false,
+        .filters =
+            {NotificationFilterConfig{
+                .name = "discord",
+                .enabled = true,
+                .match = "discord",
+                .showToast = false,
+                .saveHistory = false,
+                .playSound = false,
+                .allowPermanent = false,
+                .allowedUrgencies = {"normal", "critical"},
+            }},
     };
     c.dock.enabled = true;
     c.dock.position = DockEdge::Left;
