@@ -221,6 +221,13 @@ just build release
 sudo just install release
 ```
 
+Release builds are portable by default. For a machine-local build, enable native CPU optimizations after configuring:
+
+```sh
+meson configure build-release -Dnative_optimizations=true
+just build release
+```
+
 Pass a prefix to `configure` to install somewhere other than `/usr/local`:
 
 ```sh

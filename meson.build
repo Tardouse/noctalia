@@ -48,14 +48,17 @@ build_tests = tests_opt.enabled() or (tests_opt.auto() and get_option('buildtype
 # ── Release-only optimizations ────────────────────────────────────────────────
 if get_option('buildtype') == 'release'
   add_project_arguments(
-    '-march=native', '-mtune=native',
-    '-fomit-frame-pointer', '-ffunction-sections', '-fdata-sections',
+    '-ffunction-sections', '-fdata-sections',
     language: ['c', 'cpp'],
   )
   add_project_link_arguments(
     '-Wl,--gc-sections', '-Wl,--as-needed',
     language: ['c', 'cpp'],
   )
+endif
+
+if get_option('native_optimizations')
+  add_project_arguments('-march=native', '-mtune=native', language: ['c', 'cpp'])
 endif
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
