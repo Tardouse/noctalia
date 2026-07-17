@@ -3445,6 +3445,10 @@
           "description": "Built-in widget type for this named widget",
           "label": "Type"
         },
+        "urgent-color": {
+          "description": "Color role used for urgent workspaces; fixed hex colors are also supported",
+          "label": "Urgent Color"
+        },
         "vertical-format": {
           "description": "Optional format used on vertical bars",
           "label": "Vertical Format"

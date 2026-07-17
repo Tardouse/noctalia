@@ -1005,6 +1005,11 @@ namespace settings {
           emptyColor.visibleWhen = groupedWorkspaceSettings;
           add(std::move(emptyColor));
         }
+        {
+          auto urgentColor = withGroup(colorSpec("urgent_color", "error"), "taskbar.workspace-labels");
+          urgentColor.visibleWhen = groupedWorkspaceSettings;
+          add(std::move(urgentColor));
+        }
 
         for (auto& spec : commonSpecs) {
           if (spec.schema.key == "capsule_radius") {
@@ -1125,6 +1130,7 @@ namespace settings {
       add(withGroup(colorSpec("focused_color", "primary"), "workspaces.colors"));
       add(withGroup(colorSpec("occupied_color", "secondary"), "workspaces.colors"));
       add(withGroup(colorSpec("empty_color", "secondary"), "workspaces.colors"));
+      add(withGroup(colorSpec("urgent_color", "error"), "workspaces.colors"));
     }
 
     specs.insert(specs.end(), std::make_move_iterator(commonSpecs.begin()), std::make_move_iterator(commonSpecs.end()));

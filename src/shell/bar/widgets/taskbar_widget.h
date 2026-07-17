@@ -44,6 +44,7 @@ struct TaskbarWidgetOptions {
   ColorSpec focusedColor = colorSpecFromRole(ColorRole::Primary);
   ColorSpec occupiedColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec emptyColor = colorSpecFromRole(ColorRole::Secondary);
+  ColorSpec urgentColor = colorSpecFromRole(ColorRole::Error);
   bool showWindowTitle = false;
   float windowTitleMaxWidth = 100.0f;
   float taskbarMaxWidth = 8192.0f;
@@ -144,6 +145,7 @@ private:
   ColorSpec m_focusedColor = colorSpecFromRole(ColorRole::Primary);
   ColorSpec m_occupiedColor = colorSpecFromRole(ColorRole::Secondary);
   ColorSpec m_emptyColor = colorSpecFromRole(ColorRole::Secondary);
+  ColorSpec m_urgentColor = colorSpecFromRole(ColorRole::Error);
   bool m_showWindowTitle = false;
   float m_windowTitleMaxWidth = 100.0;
   float m_taskbarMaxWidth = 8192.0;

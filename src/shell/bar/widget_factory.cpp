@@ -572,6 +572,9 @@ std::unique_ptr<Widget> WidgetFactory::create(
                   "empty_color", colorSpecFromRole(ColorRole::Secondary), "widget." + name + ".empty_color"
               )
             : colorSpecFromRole(ColorRole::Secondary),
+        .urgentColor = wc != nullptr
+            ? wc->getColorSpec("urgent_color", colorSpecFromRole(ColorRole::Error), "widget." + name + ".urgent_color")
+            : colorSpecFromRole(ColorRole::Error),
         .showWindowTitle = wc != nullptr ? wc->getBool("show_window_title", false) : false,
         .windowTitleMaxWidth =
             static_cast<float>(wc != nullptr ? wc->getDouble("window_title_max_width", 100.0) : 100.0),
@@ -670,6 +673,9 @@ std::unique_ptr<Widget> WidgetFactory::create(
     const ColorSpec emptyColor = wc != nullptr
         ? wc->getColorSpec("empty_color", colorSpecFromRole(ColorRole::Secondary), "widget." + name + ".empty_color")
         : colorSpecFromRole(ColorRole::Secondary);
+    const ColorSpec urgentColor = wc != nullptr
+        ? wc->getColorSpec("urgent_color", colorSpecFromRole(ColorRole::Error), "widget." + name + ".urgent_color")
+        : colorSpecFromRole(ColorRole::Error);
     WorkspacesWidget::DisplayMode displayMode = WorkspacesWidget::DisplayMode::Id;
     if (display == "id") {
       displayMode = WorkspacesWidget::DisplayMode::Id;
@@ -688,6 +694,7 @@ std::unique_ptr<Widget> WidgetFactory::create(
         .focusedColor = focusedColor,
         .occupiedColor = occupiedColor,
         .emptyColor = emptyColor,
+        .urgentColor = urgentColor,
         .maxLabelChars = maxLabelChars,
         .labelsOnlyWhenOccupied = wc != nullptr ? wc->getBool("labels_only_when_occupied", false) : false,
         .hideWhenEmpty = wc != nullptr ? wc->getBool("hide_when_empty", false) : false,
