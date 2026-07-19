@@ -374,6 +374,15 @@ void Application::initInputDispatch() {
       m_lockScreen.onPointerEvent(event);
       return;
     }
+    if (m_windowSwitcher.isActive()) {
+      if (m_windowSwitcher.onPointerEvent(event)) {
+        return;
+      }
+      if (event.type == PointerEvent::Type::Button || event.type == PointerEvent::Type::Axis) {
+        return;
+      }
+      // Enter/Leave/Motion fall through so other surfaces' hover state stays in sync.
+    }
     if (m_colorPickerDialogPopup.onPointerEvent(event)) {
       return;
     }
@@ -403,8 +412,6 @@ void Application::initInputDispatch() {
     if (m_bar.onPointerEvent(event))
       return;
     if (m_dock.onPointerEvent(event))
-      return;
-    if (m_windowSwitcher.onPointerEvent(event))
       return;
     if (m_panelManager.onPointerEvent(event))
       return;
