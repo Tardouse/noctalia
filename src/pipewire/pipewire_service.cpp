@@ -685,18 +685,25 @@ namespace {
     return isProgramStreamClass(nd.mediaClass) && nd.name.starts_with("qemu-system-");
   }
 
+  [[nodiscard]] bool hasProgramStreamIdentity(const PipeWireService::NodeData& nd) {
+    if (isQemuStreamNode(nd)) {
+      return true;
+    }
+    return !nd.applicationName.empty() || !nd.applicationId.empty() || !nd.applicationBinary.empty();
+  }
+
   [[nodiscard]] bool isProgramOutputNode(const PipeWireService::NodeData& nd) {
-    // Match the "Streams" pavucontrol shows: Stream/Output/Audio without node.link-group. Loopback/
-    // filter endpoints also expose target.object or node.passive and must not appear as application
-    // volumes. QEMU streams are the exception: they set target.object to name the VM target but are
-    // still user-controllable application volumes.
+    // Match the "Streams" pavucontrol shows: Stream/Output/Audio without node.link-group /
+    // node.passive (loopback and filter endpoints). Streams that pin a sink via target.object
+    // (Telegram/OpenAL, etc.) stay visible when they have client/app identity; anonymous
+    // target.object nodes are still treated as filter plumbing.
     if (!isProgramStreamClass(nd.mediaClass) || !nd.streamClassificationReady) {
       return false;
     }
     if (!nd.linkGroup.empty() || nd.nodePassive) {
       return false;
     }
-    if (!nd.targetObject.empty() && !isQemuStreamNode(nd)) {
+    if (!nd.targetObject.empty() && !hasProgramStreamIdentity(nd)) {
       return false;
     }
     return true;
