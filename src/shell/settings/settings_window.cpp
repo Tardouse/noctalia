@@ -477,6 +477,9 @@ void SettingsWindow::dismissOpenSelectDropdown() {
 
 void SettingsWindow::destroyWindow() {
   if (m_surface != nullptr) {
+    // Drop stale pointer coords before tearing down the scene. Otherwise the next open
+    // replays hover at the last click (often the close button) and paints it hovered.
+    m_inputDispatcher.pointerLeave();
     m_inputDispatcher.setSceneRoot(nullptr);
     m_surface->setSceneRoot(nullptr);
   }
