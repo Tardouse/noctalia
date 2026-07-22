@@ -14,6 +14,19 @@ Do not substitute shorter or alternate blurbs (“lightweight Wayland bar”,
 “status bar”, ...). Noctalia is a full desktop shell (bars, dock, launcher,
 notifications, lock screen, wallpaper, settings, ...), not a bar-only tool.
 
+## Packaged distributions
+
+v5 is already packaged for:
+
+- Arch Linux
+- NixOS
+- Fedora
+- openSUSE
+- Gentoo
+- Void Linux
+- GNU Guix
+- Debian (including Ubuntu)
+
 ## Identity
 
 | | |
