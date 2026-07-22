@@ -300,7 +300,14 @@ location = "https://example.invalid/bad"
   Config makeProbe() {
     Config c;
     c.audio = AudioConfig{true, true, 0.73f, "change.ogg", "notify.ogg"};
-    c.weather = WeatherConfig{false, false, 17, "imperial"};
+    c.weather = WeatherConfig{
+        .enabled = false,
+        .effects = false,
+        .refreshMinutes = 17,
+        .unit = "imperial",
+        .url = "https://example.qweatherapi.com",
+        .key = "test-key",
+    };
     c.osd.position = "bottom_left";
     c.osd.positionVertical = "top_right";
     c.osd.orientation = "vertical";

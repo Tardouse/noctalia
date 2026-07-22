@@ -2409,7 +2409,7 @@
           "placeholder": "/bane/til/ljod.wav"
         },
         "weather": {
-          "description": "Slå på vêrtenesta med open-meteo.com",
+          "description": "Slå på vêrtenesta med QWeather",
           "label": "Vêr"
         },
         "weather-effects": {

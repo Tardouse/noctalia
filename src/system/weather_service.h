@@ -45,6 +45,7 @@ struct WeatherHourlyUnits {
 
 struct WeatherCurrentConditions {
   std::string timeIso;
+  std::string conditionText;
   std::int32_t intervalSeconds = 0;
   double temperatureC = 0.0;
   double windSpeedKmh = 0.0;
@@ -56,6 +57,7 @@ struct WeatherCurrentConditions {
 
 struct WeatherForecastDay {
   std::string dateIso;
+  std::string conditionText;
   std::int32_t weatherCode = 0;
   double temperatureMaxC = 0.0;
   double temperatureMinC = 0.0;
@@ -65,6 +67,7 @@ struct WeatherForecastDay {
 
 struct WeatherForecastHour {
   std::string timeIso;
+  std::string conditionText;
   std::int32_t weatherCode = 0;
   double temperatureC = 0.0;
   std::int32_t relativeHumidityPercent = 0;
@@ -140,13 +143,20 @@ private:
   void clearState();
   void notifyChanged();
   void startWeatherFetch();
-  void handleWeatherResponse(const std::filesystem::path& path, bool success, std::uint64_t serial);
+  void startWeatherDataFetch(
+      std::string baseUrl, std::string apiKey, std::string location, std::string displayName, double latitude,
+      double longitude, std::uint64_t serial
+  );
+  void handleWeatherResponses(
+      std::string currentBody, std::string dailyBody, std::string hourlyBody, std::string displayName, double latitude,
+      double longitude, std::uint64_t serial
+  );
+  void failWeatherRequest(std::string error, std::uint64_t serial);
   void scheduleRetryAfterFailure();
   void loadCache();
   void saveCache() const;
   [[nodiscard]] bool coordinatesValid() const noexcept;
 
-  [[nodiscard]] static std::filesystem::path transportCacheDir();
   [[nodiscard]] static std::filesystem::path stateCacheFilePath();
   [[nodiscard]] static std::string formatCoordinate(double value);
 
@@ -162,6 +172,7 @@ private:
   std::string m_error;
   std::string m_locationName;
   std::string m_locationSource;
+  std::string m_activeAddress;
   double m_resolvedLatitude = 0.0;
   double m_resolvedLongitude = 0.0;
   RequestKind m_requestKind = RequestKind::None;

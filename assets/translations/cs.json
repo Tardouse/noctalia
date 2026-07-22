@@ -2287,7 +2287,7 @@
           "placeholder": "/cesta/ke/zvuku.wav"
         },
         "weather": {
-          "description": "Povolit službu počasí přes open-meteo.com",
+          "description": "Povolit službu počasí přes QWeather",
           "label": "Počasí"
         },
         "weather-effects": {

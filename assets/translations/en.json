@@ -373,6 +373,7 @@
       "weather": "Weather"
     },
     "weather": {
+      "attribution": "Weather service by QWeather · qweather.com",
       "daily": {
         "tooltip": {
           "condition": "Condition",
@@ -885,6 +886,10 @@
       "path-browse": {
         "file-title": "Choose file",
         "folder-title": "Choose folder"
+      },
+      "password": {
+        "hide": "Hide value",
+        "show": "Show value"
       },
       "select": {
         "unknown-value": "Unknown: {value}"
@@ -2508,7 +2513,7 @@
           "placeholder": "/path/to/sound.wav"
         },
         "weather": {
-          "description": "Enable the weather service via open-meteo.com",
+          "description": "Enable the weather service via QWeather",
           "label": "Weather"
         },
         "weather-effects": {
@@ -2518,6 +2523,15 @@
         "weather-refresh-interval": {
           "description": "How often to refresh weather data (minutes)",
           "label": "Refresh Interval"
+        },
+        "weather-key": {
+          "description": "API key used to authenticate QWeather requests",
+          "label": "QWeather API Key",
+          "placeholder": "Enter API key"
+        },
+        "weather-url": {
+          "description": "Dedicated API URL shown in your QWeather console",
+          "label": "QWeather API URL"
         },
         "weather-unit": {
           "description": "Unit system for weather display",
@@ -3787,7 +3801,12 @@
       }
     },
     "errors": {
+      "api-failed": "QWeather returned an error",
+      "authentication-failed": "QWeather authentication failed",
       "fetch-failed": "Weather fetch failed",
+      "invalid-credentials": "Check the QWeather API URL and key",
+      "location-not-found": "QWeather could not find this location",
+      "missing-credentials": "Set the QWeather API URL and key in Settings",
       "parse-weather": "Could not parse weather response"
     }
   },

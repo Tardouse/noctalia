@@ -34,6 +34,8 @@ namespace noctalia::config::schema {
         field(&WeatherConfig::effects, "effects"),
         field(&WeatherConfig::refreshMinutes, "refresh_minutes", kRefreshMinutesRange),
         field(&WeatherConfig::unit, "unit"),
+        field(&WeatherConfig::url, "url"),
+        field(&WeatherConfig::key, "key"),
     };
     return s;
   }

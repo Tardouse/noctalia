@@ -1325,12 +1325,10 @@ void HomeTab::sync(Renderer& renderer) {
         m_weatherGlyph->setGlyph(WeatherService::glyphForCode(snapshot.current.weatherCode, snapshot.current.isDay));
         m_weatherGlyph->setColor(colorSpecFromRole(ColorRole::Primary));
         const int t = static_cast<int>(std::lround(m_weather->displayTemperature(snapshot.current.temperatureC)));
-        m_weatherLine->setText(
-            std::format(
-                "{}{} · {}", t, m_weather->displayTemperatureUnit(),
-                WeatherService::descriptionForCode(snapshot.current.weatherCode)
-            )
-        );
+        const std::string condition = snapshot.current.conditionText.empty()
+            ? WeatherService::descriptionForCode(snapshot.current.weatherCode)
+            : snapshot.current.conditionText;
+        m_weatherLine->setText(std::format("{}{} · {}", t, m_weather->displayTemperatureUnit(), condition));
       }
     }
   }

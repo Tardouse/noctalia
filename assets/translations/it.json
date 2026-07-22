@@ -2493,7 +2493,7 @@
           "placeholder": "/percorso/al/suono.wav"
         },
         "weather": {
-          "description": "Abilita il servizio meteo via open-meteo.com",
+          "description": "Abilita il servizio meteo via QWeather",
           "label": "Meteo"
         },
         "weather-effects": {

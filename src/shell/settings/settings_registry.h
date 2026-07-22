@@ -156,6 +156,8 @@ namespace settings {
     std::vector<std::string> browseFileExtensions;
     /// When the current value is empty, open the file picker here if the path exists.
     std::string browseFallbackDirectory;
+    /// Mask the value and render an adjacent eye button that toggles visibility.
+    bool passwordMode = false;
   };
 
   struct OptionalNumberSetting {

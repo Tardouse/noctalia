@@ -173,6 +173,9 @@ void HttpClient::download(std::string_view url, const std::filesystem::path& des
   curl_easy_setopt(easy, CURLOPT_FAILONERROR, 1L);
   curl_easy_setopt(easy, CURLOPT_TIMEOUT, 30L);
   curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, 10L);
+  // Advertise every compression format supported by libcurl and transparently
+  // decode the response body. Some APIs (including QWeather) always gzip JSON.
+  curl_easy_setopt(easy, CURLOPT_ACCEPT_ENCODING, "");
   curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
 
   Transfer transfer{};
@@ -310,6 +313,7 @@ void HttpClient::request(HttpRequest req, ResponseCallback cb) {
   curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
   curl_easy_setopt(easy, CURLOPT_TIMEOUT, 30L);
   curl_easy_setopt(easy, CURLOPT_CONNECTTIMEOUT, 10L);
+  curl_easy_setopt(easy, CURLOPT_ACCEPT_ENCODING, "");
   if (req.allowInsecureTls) {
     curl_easy_setopt(easy, CURLOPT_SSL_VERIFYPEER, 0L);
     curl_easy_setopt(easy, CURLOPT_SSL_VERIFYHOST, 0L);

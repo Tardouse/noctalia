@@ -112,7 +112,9 @@ void WeatherWidget::sync(Renderer& renderer) {
     }
     if (m_showCondition && !m_isVertical) {
       text += text.empty() ? "" : " ";
-      text += WeatherService::shortDescriptionForCode(snapshot.current.weatherCode);
+      text += snapshot.current.conditionText.empty()
+          ? WeatherService::shortDescriptionForCode(snapshot.current.weatherCode)
+          : snapshot.current.conditionText;
     }
   } else if (m_weather->loading()) {
     text = m_isVertical ? kVerticalLoading : i18n::tr("bar.widgets.weather.loading");

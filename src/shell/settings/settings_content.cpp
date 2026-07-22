@@ -219,6 +219,36 @@ namespace settings {
       return factory.makeText(value, placeholder, std::move(path), width);
     };
 
+    const auto makePasswordText = [&](const TextSetting& setting, std::vector<std::string> path) {
+      auto wrap = ui::row({.align = FlexAlign::Center, .gap = Style::spaceXs * scale});
+      auto input = factory.makeText(setting.value, setting.placeholder, std::move(path), setting.width, true);
+      Input* inputPtr = input.get();
+      wrap->addChild(std::move(input));
+
+      Button* revealPtr = nullptr;
+      auto reveal = ui::button({
+          .out = &revealPtr,
+          .glyph = "eye",
+          .glyphSize = Style::fontSizeBody * scale,
+          .variant = ButtonVariant::Ghost,
+          .tooltip = i18n::tr("settings.controls.password.show"),
+          .minWidth = Style::controlHeight * scale,
+          .minHeight = Style::controlHeight * scale,
+          .padding = Style::spaceXs * scale,
+          .radius = Style::scaledRadiusMd(scale),
+      });
+      reveal->setOnClick([inputPtr, revealPtr, revealed = false]() mutable {
+        revealed = !revealed;
+        inputPtr->setPasswordMode(!revealed);
+        revealPtr->setGlyph(revealed ? "eye-off" : "eye");
+        revealPtr->setTooltip(
+            i18n::tr(revealed ? "settings.controls.password.hide" : "settings.controls.password.show")
+        );
+      });
+      wrap->addChild(std::move(reveal));
+      return wrap;
+    };
+
     const auto makeTextWithPathBrowse = [&](const TextSetting& setting, const std::vector<std::string>& path) {
       auto wrap = ui::row({.align = FlexAlign::Center, .gap = Style::spaceSm * scale});
 
@@ -1219,6 +1249,9 @@ namespace settings {
             } else if constexpr (std::is_same_v<T, TextSetting>) {
               if (isDockLauncherIconPath(entry.path)) {
                 return makeGlyphText(control, entry.path);
+              }
+              if (control.passwordMode) {
+                return makePasswordText(control, entry.path);
               }
               if (control.browseMode != TextSettingBrowseMode::None) {
                 return makeTextWithPathBrowse(control, entry.path);

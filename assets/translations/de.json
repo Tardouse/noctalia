@@ -2493,7 +2493,7 @@
           "placeholder": "/path/to/sound.wav"
         },
         "weather": {
-          "description": "Aktiviere den Wetterdienst via open-meteo.com",
+          "description": "Aktiviere den Wetterdienst via QWeather",
           "label": "Wetter"
         },
         "weather-effects": {

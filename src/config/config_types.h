@@ -1024,6 +1024,8 @@ struct WeatherConfig {
   bool effects = true;
   std::int32_t refreshMinutes = 30;
   std::string unit = "metric";
+  std::string url;
+  std::string key;
 
   bool operator==(const WeatherConfig&) const = default;
 };

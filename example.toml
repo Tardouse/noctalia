@@ -223,8 +223,10 @@ disk_poll_seconds = 10.0            # disk usage and swap usage; graph widgets u
 [weather]
 enabled         = false
 refresh_minutes = 30
-unit            = "celsius"         # celsius | fahrenheit
+unit            = "metric"          # metric | imperial
 effects         = true              # visual weather effects
+url             = ""                # QWeather API URL, e.g. https://abc123.qweatherapi.com
+key             = ""                # QWeather API key (prefer entering this in Settings)
 # Weather uses the coordinates resolved by [location] (see below).
 
 # ── Audio ─────────────────────────────────────────────────────────────────────

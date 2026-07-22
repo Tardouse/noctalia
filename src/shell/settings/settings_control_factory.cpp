@@ -685,7 +685,8 @@ namespace settings {
   }
 
   std::unique_ptr<Input> SettingsControlFactory::makeText(
-      const std::string& value, const std::string& placeholder, std::vector<std::string> path, float width
+      const std::string& value, const std::string& placeholder, std::vector<std::string> path, float width,
+      bool passwordMode
   ) {
     auto& ctx = m_ctx;
     const float scale = m_scale;
@@ -698,6 +699,7 @@ namespace settings {
         .fontSize = Style::fontSizeBody * scale,
         .controlHeight = Style::controlHeight * scale,
         .horizontalPadding = Style::spaceSm * scale,
+        .passwordMode = passwordMode,
         .width = inputWidth,
         .height = Style::controlHeight * scale,
         .submitOnFocusLoss = true,

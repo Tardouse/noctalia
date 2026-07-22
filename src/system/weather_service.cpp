@@ -5,6 +5,7 @@
 #include "i18n/i18n.h"
 #include "net/http_client.h"
 #include "time/time_format.h"
+#include "util/string_utils.h"
 
 #include <algorithm>
 #include <cctype>
@@ -128,14 +129,6 @@ namespace {
     return it->get<double>();
   }
 
-  std::int32_t readInt(const nlohmann::json& json, const char* key) {
-    const auto it = json.find(key);
-    if (it == json.end() || !it->is_number_integer()) {
-      throw std::runtime_error(std::string("missing integer key: ") + key);
-    }
-    return it->get<std::int32_t>();
-  }
-
   std::int32_t readOptionalInt(const nlohmann::json& json, const char* key, std::int32_t fallback = 0) {
     const auto it = json.find(key);
     if (it == json.end() || !it->is_number_integer()) {
@@ -152,6 +145,163 @@ namespace {
     return it->get<std::string>();
   }
 
+  double readTextNumber(const nlohmann::json& json, const char* key, double fallback = 0.0) {
+    const auto it = json.find(key);
+    if (it == json.end() || it->is_null()) {
+      return fallback;
+    }
+    if (it->is_number()) {
+      return it->get<double>();
+    }
+    if (!it->is_string()) {
+      return fallback;
+    }
+    try {
+      return std::stod(it->get<std::string>());
+    } catch (...) {
+      return fallback;
+    }
+  }
+
+  std::int32_t readTextInt(const nlohmann::json& json, const char* key, std::int32_t fallback = 0) {
+    return static_cast<std::int32_t>(std::lround(readTextNumber(json, key, fallback)));
+  }
+
+  std::string trim(std::string value) {
+    const auto notSpace = [](unsigned char c) { return std::isspace(c) == 0; };
+    value.erase(value.begin(), std::find_if(value.begin(), value.end(), notSpace));
+    value.erase(std::find_if(value.rbegin(), value.rend(), notSpace).base(), value.end());
+    return value;
+  }
+
+  std::string normalizeQWeatherUrl(std::string value) {
+    value = trim(std::move(value));
+    if (value.empty()) {
+      return {};
+    }
+    if (!value.starts_with("https://")) {
+      if (value.find("://") != std::string::npos) {
+        return {};
+      }
+      value.insert(0, "https://");
+    }
+    while (value.size() > std::string_view("https://").size() && value.ends_with('/')) {
+      value.pop_back();
+    }
+    const std::string_view authority(
+        value.data() + std::string_view("https://").size(), value.size() - std::string_view("https://").size()
+    );
+    if (authority.empty() || authority.find_first_of("/?#@\r\n") != std::string_view::npos) {
+      return {};
+    }
+    return value;
+  }
+
+  std::string localIsoMinute(std::string_view iso) {
+    return iso.size() >= 16 ? std::string(iso.substr(0, 16)) : std::string(iso);
+  }
+
+  std::int32_t utcOffsetFromIso(std::string_view iso) {
+    if (iso.ends_with('Z')) {
+      return 0;
+    }
+    if (iso.size() < 6) {
+      return 0;
+    }
+    const std::string_view offset = iso.substr(iso.size() - 6);
+    if ((offset[0] != '+' && offset[0] != '-') || offset[3] != ':') {
+      return 0;
+    }
+    try {
+      const int hours = std::stoi(std::string(offset.substr(1, 2)));
+      const int minutes = std::stoi(std::string(offset.substr(4, 2)));
+      const int seconds = hours * 3600 + minutes * 60;
+      return static_cast<std::int32_t>(offset[0] == '-' ? -seconds : seconds);
+    } catch (...) {
+      return 0;
+    }
+  }
+
+  std::string utcOffsetLabel(std::int32_t offsetSeconds) {
+    const char sign = offsetSeconds < 0 ? '-' : '+';
+    const int absolute = std::abs(offsetSeconds);
+    return std::format("UTC{}{:02}:{:02}", sign, absolute / 3600, (absolute % 3600) / 60);
+  }
+
+  std::int32_t wmoCodeForQWeatherIcon(std::int32_t icon) {
+    if (icon == 100 || icon == 150)
+      return 0;
+    if (icon == 101 || icon == 102 || icon == 151 || icon == 152)
+      return 1;
+    if (icon == 103 || icon == 153)
+      return 2;
+    if (icon == 104)
+      return 3;
+    if (icon >= 200 && icon <= 213)
+      return 2;
+    if (icon >= 300 && icon <= 304)
+      return 95;
+    if (icon == 305 || icon == 309 || icon == 314)
+      return 51;
+    if (icon == 306 || icon == 315)
+      return 61;
+    if ((icon >= 307 && icon <= 318) || icon == 399)
+      return 65;
+    if (icon == 400 || icon == 408)
+      return 71;
+    if (icon == 401 || icon == 409)
+      return 73;
+    if (icon == 402 || icon == 403 || icon == 410 || icon == 499)
+      return 75;
+    if (icon >= 404 && icon <= 407)
+      return 85;
+    if (icon >= 500 && icon <= 515)
+      return 45;
+    return 3;
+  }
+
+  bool qWeatherIconIsDay(std::int32_t icon, std::string_view localTime) {
+    if (icon >= 150 && icon <= 199) {
+      return false;
+    }
+    if (icon >= 100 && icon <= 149) {
+      return true;
+    }
+    if (localTime.size() >= 13) {
+      try {
+        const int hour = std::stoi(std::string(localTime.substr(11, 2)));
+        return hour >= 6 && hour < 18;
+      } catch (...) {
+      }
+    }
+    return true;
+  }
+
+  std::optional<std::string> qWeatherResponseError(const HttpResponse& response) {
+    if (!response.transportOk) {
+      return i18n::tr("weather.errors.fetch-failed");
+    }
+    if (response.status == 401 || response.status == 403) {
+      return i18n::tr("weather.errors.authentication-failed");
+    }
+    if (response.status < 200 || response.status >= 300) {
+      return i18n::tr("weather.errors.api-failed");
+    }
+    try {
+      const auto json = nlohmann::json::parse(response.body);
+      const std::string code = readString(json, "code");
+      if (code == "200") {
+        return std::nullopt;
+      }
+      if (code == "401" || code == "402" || code == "403") {
+        return i18n::tr("weather.errors.authentication-failed");
+      }
+      return i18n::tr("weather.errors.api-failed");
+    } catch (...) {
+      return i18n::tr("weather.errors.parse-weather");
+    }
+  }
+
   bool readBool(const nlohmann::json& json, const char* key, bool fallback = false) {
     const auto it = json.find(key);
     if (it == json.end()) {
@@ -162,16 +312,6 @@ namespace {
     }
     if (it->is_number_integer()) {
       return it->get<int>() != 0;
-    }
-    return fallback;
-  }
-
-  bool readBoolValue(const nlohmann::json& value, bool fallback = false) {
-    if (value.is_boolean()) {
-      return value.get<bool>();
-    }
-    if (value.is_number_integer()) {
-      return value.get<int>() != 0;
     }
     return fallback;
   }
@@ -255,6 +395,7 @@ WeatherService::WeatherService(ConfigService& configService, HttpClient& httpCli
 
 void WeatherService::initialize() {
   m_activeConfig = m_configService.config().weather;
+  m_activeAddress = m_configService.config().location.address;
   m_configService.addReloadCallback([this]() { onConfigReload(); });
   loadCache();
   requestRefresh();
@@ -451,21 +592,32 @@ std::string WeatherService::descriptionForCode(std::int32_t code) {
 void WeatherService::onConfigReload() {
   const WeatherConfig previousConfig = m_activeConfig;
   const WeatherConfig nextConfig = m_configService.config().weather;
-  if (previousConfig == nextConfig) {
+  const std::string nextAddress = m_configService.config().location.address;
+  const bool addressChanged = m_activeAddress != nextAddress;
+  if (previousConfig == nextConfig && !addressChanged) {
     return;
   }
 
   m_activeConfig = nextConfig;
+  m_activeAddress = nextAddress;
   m_error.clear();
+  const bool credentialsChanged = previousConfig.url != nextConfig.url || previousConfig.key != nextConfig.key;
   if (!m_activeConfig.enabled) {
     clearState();
     notifyChanged();
     return;
   }
 
-  if (!previousConfig.enabled) {
+  if (credentialsChanged) {
+    // Invalidate callbacks that may still carry the previous credential and do not
+    // display cached data from a different QWeather project while reconnecting.
+    clearState();
+    requestRefresh();
+  } else if (!previousConfig.enabled) {
     // Re-enabled: reload cache and refresh for the current location.
     loadCache();
+    requestRefresh();
+  } else if (addressChanged) {
     requestRefresh();
   } else if (m_snapshot.valid) {
     m_nextRefreshAt = m_snapshot.fetchedAt + std::chrono::minutes(std::max(5, m_activeConfig.refreshMinutes));
@@ -491,159 +643,240 @@ void WeatherService::notifyChanged() {
 }
 
 void WeatherService::startWeatherFetch() {
-  std::error_code ec;
-  std::filesystem::create_directories(transportCacheDir(), ec);
-  const auto path = transportCacheDir() / "forecast.json";
-  const std::string url = std::format(
-      "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}"
-      "&current=temperature_2m,wind_speed_10m,wind_direction_10m,weather_code,is_day,uv_index"
-      "&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code,is_day,wind_speed_10m"
-      "&daily=temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset"
-      "&forecast_days={}&forecast_hours={}&timezone=auto",
-      formatCoordinate(m_resolvedLatitude), formatCoordinate(m_resolvedLongitude), kForecastDays, kForecastHours
-  );
+  const std::string baseUrl = normalizeQWeatherUrl(m_activeConfig.url);
+  const std::string apiKey = trim(m_activeConfig.key);
+  if (m_activeConfig.url.empty() || apiKey.empty()) {
+    failWeatherRequest(i18n::tr("weather.errors.missing-credentials"), m_requestSerial);
+    return;
+  }
+  if (baseUrl.empty() || apiKey.find_first_of("\r\n") != std::string::npos) {
+    failWeatherRequest(i18n::tr("weather.errors.invalid-credentials"), m_requestSerial);
+    return;
+  }
+
   const std::uint64_t serial = ++m_requestSerial;
   m_loading = true;
   m_error.clear();
   m_requestKind = RequestKind::FetchWeather;
   notifyChanged();
-  m_httpClient.download(url, path, [this, path, serial](bool success) {
-    handleWeatherResponse(path, success, serial);
+
+  const std::string address = trim(m_configService.config().location.address);
+  if (address.empty()) {
+    startWeatherDataFetch(
+        baseUrl, apiKey,
+        std::format("{},{}", formatCoordinate(m_resolvedLongitude), formatCoordinate(m_resolvedLatitude)),
+        m_locationName, m_resolvedLatitude, m_resolvedLongitude, serial
+    );
+    return;
+  }
+
+  HttpRequest lookupRequest{
+      .url = baseUrl + "/geo/v2/city/lookup?location=" + StringUtils::urlEncode(address) + "&number=1&lang=zh",
+      .headers = {"Accept: application/json", "X-QW-Api-Key: " + apiKey},
+  };
+  m_httpClient.request(std::move(lookupRequest), [this, baseUrl, apiKey, serial](HttpResponse response) mutable {
+    if (serial != m_requestSerial || !m_activeConfig.enabled) {
+      return;
+    }
+    if (auto error = qWeatherResponseError(response)) {
+      failWeatherRequest(std::move(*error), serial);
+      return;
+    }
+
+    try {
+      const auto json = nlohmann::json::parse(response.body);
+      const auto& locations = json.at("location");
+      if (!locations.is_array() || locations.empty() || !locations.front().is_object()) {
+        throw std::runtime_error("QWeather location not found");
+      }
+      const auto& place = locations.front();
+      const std::string locationId = readString(place, "id");
+      if (locationId.empty()) {
+        throw std::runtime_error("QWeather location is missing an id");
+      }
+
+      std::string displayName = readString(place, "name");
+      const std::string adm2 = readString(place, "adm2");
+      const std::string adm1 = readString(place, "adm1");
+      if (!adm2.empty() && adm2 != displayName) {
+        displayName += ", " + adm2;
+      }
+      if (!adm1.empty() && adm1 != displayName && adm1 != adm2) {
+        displayName += ", " + adm1;
+      }
+
+      startWeatherDataFetch(
+          baseUrl, apiKey, locationId, std::move(displayName), readTextNumber(place, "lat", m_resolvedLatitude),
+          readTextNumber(place, "lon", m_resolvedLongitude), serial
+      );
+    } catch (const std::exception& e) {
+      kLog.warn("QWeather location lookup failed: {}", e.what());
+      failWeatherRequest(i18n::tr("weather.errors.location-not-found"), serial);
+    }
   });
 }
 
-void WeatherService::handleWeatherResponse(const std::filesystem::path& path, bool success, std::uint64_t serial) {
+void WeatherService::startWeatherDataFetch(
+    std::string baseUrl, std::string apiKey, std::string location, std::string displayName, double latitude,
+    double longitude, std::uint64_t serial
+) {
+  const std::string query = "?location=" + StringUtils::urlEncode(location) + "&unit=m&lang=zh";
+  HttpRequest currentRequest{
+      .url = baseUrl + "/v7/weather/now" + query,
+      .headers = {"Accept: application/json", "X-QW-Api-Key: " + apiKey},
+  };
+  m_httpClient.request(
+      std::move(currentRequest),
+      [this, baseUrl, query, apiKey, displayName = std::move(displayName), latitude, longitude,
+       serial](HttpResponse current) mutable {
+        if (serial != m_requestSerial || !m_activeConfig.enabled) {
+          return;
+        }
+        if (auto error = qWeatherResponseError(current)) {
+          failWeatherRequest(std::move(*error), serial);
+          return;
+        }
+
+        HttpRequest dailyRequest{
+            .url = baseUrl + "/v7/weather/7d" + query,
+            .headers = {"Accept: application/json", "X-QW-Api-Key: " + apiKey},
+        };
+        m_httpClient.request(
+            std::move(dailyRequest),
+            [this, baseUrl, query, apiKey, displayName = std::move(displayName), latitude, longitude, serial,
+             currentBody = std::move(current.body)](HttpResponse daily) mutable {
+              if (serial != m_requestSerial || !m_activeConfig.enabled) {
+                return;
+              }
+              if (auto error = qWeatherResponseError(daily)) {
+                failWeatherRequest(std::move(*error), serial);
+                return;
+              }
+
+              HttpRequest hourlyRequest{
+                  .url = baseUrl + "/v7/weather/24h" + query,
+                  .headers = {"Accept: application/json", "X-QW-Api-Key: " + apiKey},
+              };
+              m_httpClient.request(
+                  std::move(hourlyRequest),
+                  [this, displayName = std::move(displayName), latitude, longitude, serial,
+                   currentBody = std::move(currentBody),
+                   dailyBody = std::move(daily.body)](HttpResponse hourly) mutable {
+                    if (serial != m_requestSerial || !m_activeConfig.enabled) {
+                      return;
+                    }
+                    if (auto error = qWeatherResponseError(hourly)) {
+                      failWeatherRequest(std::move(*error), serial);
+                      return;
+                    }
+                    handleWeatherResponses(
+                        std::move(currentBody), std::move(dailyBody), std::move(hourly.body), std::move(displayName),
+                        latitude, longitude, serial
+                    );
+                  }
+              );
+            }
+        );
+      }
+  );
+}
+
+void WeatherService::handleWeatherResponses(
+    std::string currentBody, std::string dailyBody, std::string hourlyBody, std::string displayName, double latitude,
+    double longitude, std::uint64_t serial
+) {
   if (serial != m_requestSerial || !m_activeConfig.enabled) {
     return;
   }
   m_requestKind = RequestKind::None;
   m_loading = false;
-  if (!success) {
-    m_error = i18n::tr("weather.errors.fetch-failed");
-    scheduleRetryAfterFailure();
-    dropPastForecastHours(m_snapshot);
-    dropPastForecastDays(m_snapshot);
-    notifyChanged();
-    return;
-  }
 
   try {
-    std::ifstream file(path);
-    const auto json = nlohmann::json::parse(file);
-    const auto& current = json.at("current");
-    const auto& hourly = json.at("hourly");
-    const auto& daily = json.at("daily");
-    const auto& hourTimes = hourly.at("time");
-    const auto& hourTemps = hourly.at("temperature_2m");
-    const auto& hourHumidity = hourly.at("relative_humidity_2m");
-    const auto& hourPrecipitationProbability = hourly.at("precipitation_probability");
-    const auto& hourCodes = hourly.at("weather_code");
-    const auto& hourIsDay = hourly.at("is_day");
-    const auto& hourWindSpeeds = hourly.at("wind_speed_10m");
-    const auto& dates = daily.at("time");
-    const auto& tempsMax = daily.at("temperature_2m_max");
-    const auto& tempsMin = daily.at("temperature_2m_min");
-    const auto& codes = daily.at("weather_code");
-    const auto& sunrises = daily.at("sunrise");
-    const auto& sunsets = daily.at("sunset");
+    const auto currentJson = nlohmann::json::parse(currentBody);
+    const auto dailyJson = nlohmann::json::parse(dailyBody);
+    const auto hourlyJson = nlohmann::json::parse(hourlyBody);
+    const auto& current = currentJson.at("now");
+    const auto& daily = dailyJson.at("daily");
+    const auto& hourly = hourlyJson.at("hourly");
+    if (!current.is_object() || !daily.is_array() || !hourly.is_array()) {
+      throw std::runtime_error("unexpected QWeather response shape");
+    }
 
     WeatherSnapshot next;
     next.valid = true;
-    next.locationName = m_locationName;
+    next.locationName = std::move(displayName);
     next.sourceLabel = m_locationSource;
-    next.latitude = m_resolvedLatitude;
-    next.longitude = m_resolvedLongitude;
-    next.generationTimeMs = readOptionalNumber(json, "generationtime_ms");
-    next.utcOffsetSeconds = readOptionalInt(json, "utc_offset_seconds");
-    next.timezone = readString(json, "timezone");
-    next.timezoneAbbreviation = readString(json, "timezone_abbreviation");
-    next.elevationM = readOptionalNumber(json, "elevation");
-    if (const auto it = json.find("current_units"); it != json.end() && it->is_object()) {
-      next.currentUnits.time = readString(*it, "time");
-      next.currentUnits.interval = readString(*it, "interval");
-      next.currentUnits.temperature = readString(*it, "temperature_2m");
-      next.currentUnits.windSpeed = readString(*it, "wind_speed_10m");
-      next.currentUnits.windDirection = readString(*it, "wind_direction_10m");
-      next.currentUnits.isDay = readString(*it, "is_day");
-      next.currentUnits.weatherCode = readString(*it, "weather_code");
-      next.currentUnits.uvIndex = readString(*it, "uv_index");
-    }
-    if (const auto it = json.find("daily_units"); it != json.end() && it->is_object()) {
-      next.dailyUnits.time = readString(*it, "time");
-      next.dailyUnits.temperatureMax = readString(*it, "temperature_2m_max");
-      next.dailyUnits.temperatureMin = readString(*it, "temperature_2m_min");
-      next.dailyUnits.weatherCode = readString(*it, "weather_code");
-      next.dailyUnits.sunrise = readString(*it, "sunrise");
-      next.dailyUnits.sunset = readString(*it, "sunset");
-    }
-    if (const auto it = json.find("hourly_units"); it != json.end() && it->is_object()) {
-      next.hourlyUnits.time = readString(*it, "time");
-      next.hourlyUnits.temperature = readString(*it, "temperature_2m");
-      next.hourlyUnits.relativeHumidity = readString(*it, "relative_humidity_2m");
-      next.hourlyUnits.precipitationProbability = readString(*it, "precipitation_probability");
-      next.hourlyUnits.weatherCode = readString(*it, "weather_code");
-      next.hourlyUnits.isDay = readString(*it, "is_day");
-      next.hourlyUnits.windSpeed = readString(*it, "wind_speed_10m");
-    }
-    next.current.timeIso = readString(current, "time");
-    next.current.intervalSeconds = readOptionalInt(current, "interval");
-    next.current.temperatureC = readNumber(current, "temperature_2m");
-    next.current.windSpeedKmh = readOptionalNumber(current, "wind_speed_10m");
-    next.current.windDirectionDeg = readOptionalInt(current, "wind_direction_10m");
-    next.current.isDay = readBool(current, "is_day", true);
-    next.current.weatherCode = readInt(current, "weather_code");
-    next.current.uvIndex = readOptionalNumber(current, "uv_index");
+    next.latitude = latitude;
+    next.longitude = longitude;
+    const std::string observationTime = readString(current, "obsTime");
+    next.utcOffsetSeconds = utcOffsetFromIso(observationTime);
+    next.timezoneAbbreviation = utcOffsetLabel(next.utcOffsetSeconds);
+    next.currentUnits.temperature = "°C";
+    next.currentUnits.windSpeed = "km/h";
+    next.currentUnits.windDirection = "°";
+    next.dailyUnits.temperatureMax = "°C";
+    next.dailyUnits.temperatureMin = "°C";
+    next.hourlyUnits.temperature = "°C";
+    next.hourlyUnits.relativeHumidity = "%";
+    next.hourlyUnits.precipitationProbability = "%";
+    next.hourlyUnits.windSpeed = "km/h";
+    next.current.timeIso = localIsoMinute(observationTime);
+    next.current.conditionText = readString(current, "text");
+    next.current.intervalSeconds = 3600;
+    next.current.temperatureC = readTextNumber(current, "temp");
+    next.current.windSpeedKmh = readTextNumber(current, "windSpeed");
+    next.current.windDirectionDeg = readTextInt(current, "wind360");
+    const std::int32_t currentIcon = readTextInt(current, "icon", 999);
+    next.current.isDay = qWeatherIconIsDay(currentIcon, next.current.timeIso);
+    next.current.weatherCode = wmoCodeForQWeatherIcon(currentIcon);
     next.fetchedAt = Clock::now();
 
-    const std::size_t hourCount = std::min(
-        {hourTimes.size(), hourTemps.size(), hourHumidity.size(), hourPrecipitationProbability.size(), hourCodes.size(),
-         hourIsDay.size(), hourWindSpeeds.size(), kForecastHours}
-    );
-    next.forecastHours.reserve(hourCount);
-    for (std::size_t i = 0; i < hourCount; ++i) {
-      if (!hourTimes[i].is_string()
-          || !hourTemps[i].is_number()
-          || !hourHumidity[i].is_number_integer()
-          || !hourPrecipitationProbability[i].is_number_integer()
-          || !hourCodes[i].is_number_integer()
-          || (!hourIsDay[i].is_boolean() && !hourIsDay[i].is_number_integer())
-          || !hourWindSpeeds[i].is_number()) {
+    next.forecastDays.reserve(std::min(daily.size(), kForecastDays));
+    for (const auto& day : daily) {
+      if (!day.is_object() || next.forecastDays.size() >= kForecastDays) {
         continue;
       }
-      next.forecastHours.push_back(
-          WeatherForecastHour{
-              .timeIso = hourTimes[i].get<std::string>(),
-              .weatherCode = hourCodes[i].get<std::int32_t>(),
-              .temperatureC = hourTemps[i].get<double>(),
-              .relativeHumidityPercent = hourHumidity[i].get<std::int32_t>(),
-              .precipitationProbabilityPercent = hourPrecipitationProbability[i].get<std::int32_t>(),
-              .isDay = readBoolValue(hourIsDay[i], true),
-              .windSpeedKmh = hourWindSpeeds[i].get<double>(),
-          }
-      );
-    }
-    dropPastForecastHours(next);
-
-    const std::size_t count = std::min(
-        {dates.size(), tempsMax.size(), tempsMin.size(), codes.size(), sunrises.size(), sunsets.size(), kForecastDays}
-    );
-    next.forecastDays.reserve(count);
-    for (std::size_t i = 0; i < count; ++i) {
-      if (!dates[i].is_string() || !tempsMax[i].is_number() || !tempsMin[i].is_number() || !codes[i].is_number()) {
-        continue;
-      }
+      const std::string date = readString(day, "fxDate");
+      const std::string sunrise = readString(day, "sunrise");
+      const std::string sunset = readString(day, "sunset");
       next.forecastDays.push_back(
           WeatherForecastDay{
-              .dateIso = dates[i].get<std::string>(),
-              .weatherCode = codes[i].get<std::int32_t>(),
-              .temperatureMaxC = tempsMax[i].get<double>(),
-              .temperatureMinC = tempsMin[i].get<double>(),
-              .sunriseIso = sunrises[i].is_string() ? sunrises[i].get<std::string>() : std::string{},
-              .sunsetIso = sunsets[i].is_string() ? sunsets[i].get<std::string>() : std::string{},
+              .dateIso = date,
+              .conditionText = readString(day, "textDay"),
+              .weatherCode = wmoCodeForQWeatherIcon(readTextInt(day, "iconDay", 999)),
+              .temperatureMaxC = readTextNumber(day, "tempMax"),
+              .temperatureMinC = readTextNumber(day, "tempMin"),
+              .sunriseIso = sunrise.empty() ? std::string{} : date + "T" + sunrise,
+              .sunsetIso = sunset.empty() ? std::string{} : date + "T" + sunset,
           }
       );
     }
     dropPastForecastDays(next);
+    if (!daily.empty() && daily.front().is_object()) {
+      next.current.uvIndex = readTextNumber(daily.front(), "uvIndex");
+    }
+
+    next.forecastHours.reserve(std::min(hourly.size(), kForecastHours));
+    for (const auto& hour : hourly) {
+      if (!hour.is_object() || next.forecastHours.size() >= kForecastHours) {
+        continue;
+      }
+      const std::string time = localIsoMinute(readString(hour, "fxTime"));
+      const std::int32_t icon = readTextInt(hour, "icon", 999);
+      next.forecastHours.push_back(
+          WeatherForecastHour{
+              .timeIso = time,
+              .conditionText = readString(hour, "text"),
+              .weatherCode = wmoCodeForQWeatherIcon(icon),
+              .temperatureC = readTextNumber(hour, "temp"),
+              .relativeHumidityPercent = readTextInt(hour, "humidity"),
+              .precipitationProbabilityPercent = readTextInt(hour, "pop"),
+              .isDay = qWeatherIconIsDay(icon, time),
+              .windSpeedKmh = readTextNumber(hour, "windSpeed"),
+          }
+      );
+    }
+    dropPastForecastHours(next);
 
     m_snapshot = std::move(next);
     m_error.clear();
@@ -656,6 +889,19 @@ void WeatherService::handleWeatherResponse(const std::filesystem::path& path, bo
     kLog.warn("{}: {}", m_error, e.what());
     notifyChanged();
   }
+}
+
+void WeatherService::failWeatherRequest(std::string error, std::uint64_t serial) {
+  if (serial != m_requestSerial || !m_activeConfig.enabled) {
+    return;
+  }
+  m_requestKind = RequestKind::None;
+  m_loading = false;
+  m_error = std::move(error);
+  scheduleRetryAfterFailure();
+  dropPastForecastHours(m_snapshot);
+  dropPastForecastDays(m_snapshot);
+  notifyChanged();
 }
 
 void WeatherService::scheduleRetryAfterFailure() {
@@ -672,8 +918,6 @@ bool WeatherService::coordinatesValid() const noexcept {
       && m_resolvedLongitude <= 180.0;
 }
 
-std::filesystem::path WeatherService::transportCacheDir() { return std::filesystem::path("/tmp") / "noctalia-weather"; }
-
 std::filesystem::path WeatherService::stateCacheFilePath() {
   if (const char* xdg = std::getenv("XDG_CACHE_HOME"); xdg != nullptr && xdg[0] != '\0') {
     return std::filesystem::path(xdg) / "noctalia" / "weather.json";
@@ -684,7 +928,7 @@ std::filesystem::path WeatherService::stateCacheFilePath() {
   return std::filesystem::path("/tmp") / "noctalia-weather-cache.json";
 }
 
-std::string WeatherService::formatCoordinate(double value) { return std::format("{:.4f}", value); }
+std::string WeatherService::formatCoordinate(double value) { return std::format("{:.2f}", value); }
 
 void WeatherService::loadCache() {
   clearState();
@@ -697,6 +941,9 @@ void WeatherService::loadCache() {
   try {
     std::ifstream file(path);
     const auto json = nlohmann::json::parse(file);
+    if (readString(json, "provider") != "qweather") {
+      return;
+    }
 
     const auto& snapshot = json.at("snapshot");
     if (!readBool(snapshot, "valid")) {
@@ -724,6 +971,7 @@ void WeatherService::loadCache() {
     }
     if (const auto it = snapshot.find("current"); it != snapshot.end() && it->is_object()) {
       m_snapshot.current.timeIso = readString(*it, "time_iso");
+      m_snapshot.current.conditionText = readString(*it, "condition_text");
       m_snapshot.current.intervalSeconds = readOptionalInt(*it, "interval_seconds");
       m_snapshot.current.temperatureC = readOptionalNumber(*it, "temperature_c");
       m_snapshot.current.windSpeedKmh = readOptionalNumber(*it, "wind_speed_kmh");
@@ -741,6 +989,7 @@ void WeatherService::loadCache() {
         m_snapshot.forecastHours.push_back(
             WeatherForecastHour{
                 .timeIso = readString(item, "time_iso"),
+                .conditionText = readString(item, "condition_text"),
                 .weatherCode = readOptionalInt(item, "weather_code"),
                 .temperatureC = readOptionalNumber(item, "temperature_c"),
                 .relativeHumidityPercent = readOptionalInt(item, "relative_humidity_percent"),
@@ -760,6 +1009,7 @@ void WeatherService::loadCache() {
         m_snapshot.forecastDays.push_back(
             WeatherForecastDay{
                 .dateIso = readString(item, "date_iso"),
+                .conditionText = readString(item, "condition_text"),
                 .weatherCode = readOptionalInt(item, "weather_code"),
                 .temperatureMaxC = readOptionalNumber(item, "temperature_max_c"),
                 .temperatureMinC = readOptionalNumber(item, "temperature_min_c"),
@@ -796,6 +1046,7 @@ void WeatherService::saveCache() const {
   std::filesystem::create_directories(path.parent_path(), ec);
 
   nlohmann::json json{
+      {"provider", "qweather"},
       {"snapshot",
        {
            {"valid", true},
@@ -814,6 +1065,7 @@ void WeatherService::saveCache() const {
            {"current",
             {
                 {"time_iso", m_snapshot.current.timeIso},
+                {"condition_text", m_snapshot.current.conditionText},
                 {"interval_seconds", m_snapshot.current.intervalSeconds},
                 {"temperature_c", m_snapshot.current.temperatureC},
                 {"wind_speed_kmh", m_snapshot.current.windSpeedKmh},
@@ -831,6 +1083,7 @@ void WeatherService::saveCache() const {
   for (const auto& hour : m_snapshot.forecastHours) {
     json["snapshot"]["forecast_hours"].push_back({
         {"time_iso", hour.timeIso},
+        {"condition_text", hour.conditionText},
         {"weather_code", hour.weatherCode},
         {"temperature_c", hour.temperatureC},
         {"relative_humidity_percent", hour.relativeHumidityPercent},
@@ -843,6 +1096,7 @@ void WeatherService::saveCache() const {
   for (const auto& day : m_snapshot.forecastDays) {
     json["snapshot"]["forecast_days"].push_back({
         {"date_iso", day.dateIso},
+        {"condition_text", day.conditionText},
         {"weather_code", day.weatherCode},
         {"temperature_max_c", day.temperatureMaxC},
         {"temperature_min_c", day.temperatureMinC},

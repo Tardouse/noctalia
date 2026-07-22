@@ -2313,6 +2313,35 @@ namespace settings {
     const SettingVisibility weatherOn = [](const Config& c) { return c.weather.enabled; };
     {
       auto e = makeEntry(
+          SettingsSection::Location, "weather", tr("settings.schema.services.weather-url.label"),
+          tr("settings.schema.services.weather-url.description"), {"weather", "url"},
+          TextSetting{
+              .value = cfg.weather.url,
+              .placeholder = "https://abc123.qweatherapi.com",
+              .width = 280.0f,
+          },
+          "qweather api url host"
+      );
+      e.visibleWhen = weatherOn;
+      entries.push_back(std::move(e));
+    }
+    {
+      auto e = makeEntry(
+          SettingsSection::Location, "weather", tr("settings.schema.services.weather-key.label"),
+          tr("settings.schema.services.weather-key.description"), {"weather", "key"},
+          TextSetting{
+              .value = cfg.weather.key,
+              .placeholder = tr("settings.schema.services.weather-key.placeholder"),
+              .width = 280.0f,
+              .passwordMode = true,
+          },
+          "qweather api key credential"
+      );
+      e.visibleWhen = weatherOn;
+      entries.push_back(std::move(e));
+    }
+    {
+      auto e = makeEntry(
           SettingsSection::Location, "weather", tr("settings.schema.shell.show-location.label"),
           tr("settings.schema.shell.show-location.description"), {"shell", "show_location"},
           ToggleSetting{cfg.shell.showLocation}, "weather"

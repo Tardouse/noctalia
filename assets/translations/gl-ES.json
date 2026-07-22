@@ -2397,7 +2397,7 @@
           "placeholder": "/path/to/sound.wav"
         },
         "weather": {
-          "description": "Activa o servizo meteorolóxico mediante open-meteo.com",
+          "description": "Activa o servizo meteorolóxico mediante QWeather",
           "label": "Tempo"
         },
         "weather-effects": {

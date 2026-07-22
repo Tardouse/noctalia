@@ -908,13 +908,17 @@ void WeatherTab::sync(Renderer& renderer) {
       m_currentHiLoLabel->setText("-- / --");
     }
   }
-  m_currentDescLabel->setText(WeatherService::descriptionForCode(snapshot.current.weatherCode));
+  m_currentDescLabel->setText(
+      snapshot.current.conditionText.empty() ? WeatherService::descriptionForCode(snapshot.current.weatherCode)
+                                             : snapshot.current.conditionText
+  );
   m_updatedLabel->setText(
       snapshot.locationName.empty() ? i18n::tr("location.locations.current") : snapshot.locationName
   );
   m_updatedLabel->setVisible(showLocation);
-  const std::string status = m_weather->loading() ? i18n::tr("control-center.weather.refreshing")
-                                                  : (snapshot.valid ? std::string{} : m_weather->error());
+  const std::string status = m_weather->loading()
+      ? i18n::tr("control-center.weather.refreshing")
+      : (!m_weather->error().empty() ? m_weather->error() : i18n::tr("control-center.weather.attribution"));
   m_statusLabel->setText(status);
   m_statusLabel->setColor(
       colorSpecFromRole(m_weather->error().empty() ? ColorRole::OnSurfaceVariant : ColorRole::Error)
@@ -1029,7 +1033,8 @@ void WeatherTab::syncDailyForecast(Renderer& renderer, const WeatherSnapshot& sn
     }
 
     const auto& day = snapshot.forecastDays[i + forecastStart];
-    const std::string condition = WeatherService::shortDescriptionForCode(day.weatherCode);
+    const std::string condition =
+        day.conditionText.empty() ? WeatherService::shortDescriptionForCode(day.weatherCode) : day.conditionText;
     const std::string tempHigh = std::format(
         "{}{}", static_cast<int>(std::lround(m_weather->displayTemperature(day.temperatureMaxC))),
         m_weather->displayTemperatureUnit()
@@ -1094,7 +1099,8 @@ void WeatherTab::syncHourlyForecast(Renderer& renderer, const WeatherSnapshot& s
     const int displayTemp = static_cast<int>(std::lround(m_weather->displayTemperature(hour.temperatureC)));
     const double displayWind = imperial ? hour.windSpeedKmh * 0.621371 : hour.windSpeedKmh;
     const std::string displayWindText = std::format("{} {}", static_cast<int>(std::lround(displayWind)), windUnit);
-    const std::string condition = WeatherService::shortDescriptionForCode(hour.weatherCode);
+    const std::string condition =
+        hour.conditionText.empty() ? WeatherService::shortDescriptionForCode(hour.weatherCode) : hour.conditionText;
     const std::vector<TooltipRow> tooltipRows{
         {i18n::tr("control-center.weather.hourly.tooltip.condition"), condition},
         {i18n::tr("control-center.weather.hourly.tooltip.rain"),

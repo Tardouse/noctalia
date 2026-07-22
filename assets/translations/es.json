@@ -2384,7 +2384,7 @@
           "placeholder": "/path/to/sound.wav"
         },
         "weather": {
-          "description": "Habilitar el servicio de clima via open-meteo.com",
+          "description": "Habilitar el servicio de clima via QWeather",
           "label": "Clima"
         },
         "weather-effects": {

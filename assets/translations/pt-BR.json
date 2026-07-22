@@ -2493,7 +2493,7 @@
           "placeholder": "/path/to/sound.wav"
         },
         "weather": {
-          "description": "Ativar o serviço de clima via open-meteo.com",
+          "description": "Ativar o serviço de clima via QWeather",
           "label": "Clima"
         },
         "weather-effects": {
