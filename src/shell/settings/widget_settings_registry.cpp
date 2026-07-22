@@ -666,6 +666,7 @@ namespace settings {
         {"gauge", "settings.widgets.options.gauge"},
         {"graph", "settings.widgets.options.graph"},
         {"text", "settings.widgets.options.text"},
+        {"none", "settings.widgets.options.none"},
     };
     const std::vector<WidgetSettingSelectOption> networkSpeedUnits = {
         {"auto", "settings.widgets.options.auto"},
@@ -917,11 +918,20 @@ namespace settings {
       }
       add(segmentedSpec("display", "gauge", sysmonDisplay));
       add(colorSpec("highlight_color", "error"));
-      add(boolSpec("show_label", true));
       {
-        auto minW = intSpec("label_min_width", 0, 0.0, 200.0, 1.0);
-        minW.visibleWhen = WidgetSettingVisibility{"show_label", {"true"}};
-        add(std::move(minW));
+        auto showLabel = boolSpec("show_label", true);
+        showLabel.visibleWhen = WidgetSettingVisibility{"display", {"gauge", "graph", "text"}};
+        add(std::move(showLabel));
+      }
+      {
+        auto minWidth = intSpec("label_min_width", 0, 0.0, 200.0, 1.0);
+        WidgetSettingVisibility minWidthSettings;
+        minWidthSettings.all = {
+            WidgetSettingVisibilityCondition{"display", {"gauge", "graph", "text"}},
+            WidgetSettingVisibilityCondition{"show_label", {"true"}},
+        };
+        minWidth.visibleWhen = minWidthSettings;
+        add(std::move(minWidth));
       }
     } else if (type == "power_profile") {
       add(boolSpec("enable_scroll", true));

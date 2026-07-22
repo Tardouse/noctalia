@@ -162,7 +162,8 @@ namespace {
 
 SysmonWidget::SysmonWidget(SystemMonitorService* monitor, ConfigService& configService, SysmonWidgetOptions options)
     : m_monitor(monitor), m_stat(options.stat), m_displayMode(options.displayMode),
-      m_highlightColor(options.highlightColor), m_configService(configService), m_showLabel(options.showLabel),
+      m_highlightColor(options.highlightColor), m_configService(configService),
+      m_showLabel(options.showLabel && options.displayMode != SysmonDisplayMode::None),
       m_labelMinWidth(options.labelMinWidth), m_diskPath(std::move(options.diskPath)),
       m_networkInterface(std::move(options.networkInterface)), m_networkSpeedUnit(options.networkSpeedUnit),
       m_networkSpeedLabelStyle(options.networkSpeedLabelStyle), m_glyphOverride(std::move(options.glyph)),

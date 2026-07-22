@@ -39,7 +39,7 @@ enum class SysmonStat {
   NetRx,
   NetTx
 };
-enum class SysmonDisplayMode { Text, Graph, Gauge };
+enum class SysmonDisplayMode { Text, Graph, Gauge, None };
 
 struct SysmonWidgetOptions {
   SysmonStat stat = SysmonStat::CpuUsage;
