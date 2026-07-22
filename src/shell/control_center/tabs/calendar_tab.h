@@ -66,6 +66,7 @@ private:
   int m_lastCurrentYear = std::numeric_limits<int>::min();
   int m_lastCurrentMonth = -1;
   int m_lastToday = -1;
+  int m_lastShowLunarCalendar = -1;
   int m_monthSlideDirection = 0;
   int m_pendingMonthDelta = 0;
   bool m_startMonthSlideIn = false;

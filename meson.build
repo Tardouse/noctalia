@@ -764,6 +764,7 @@ _noctalia_sources = files(
   'src/system/system_monitor_service.cpp',
   'src/system/weather_service.cpp',
   'src/time/time_format.cpp',
+  'src/time/chinese_lunar.cpp',
   'src/time/time_service.cpp',
   'src/ui/visuals/audio_visualizer.cpp',
   'src/ui/visuals/fancy_audio_visualizer.cpp',
@@ -1272,6 +1273,19 @@ time_format_test = executable('time_format_test',
 )
 
 test('time_format', time_format_test)
+
+chinese_lunar_test = executable('chinese_lunar_test',
+  sources: files(
+    'tests/chinese_lunar_test.cpp',
+    'src/time/chinese_lunar.cpp',
+  ),
+  dependencies: [
+    libqalculate_dep,
+  ],
+  include_directories: _noctalia_inc,
+)
+
+test('chinese_lunar', chinese_lunar_test)
 
 cpu_temp_sensor_test = executable('cpu_temp_sensor_test',
   sources: files(

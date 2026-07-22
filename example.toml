@@ -437,6 +437,10 @@ enabled = false
 # [[control_center.shortcuts]]
 # type = "session"
 
+[control_center.calendar]
+show_events_card    = true
+show_lunar_calendar = true            # display Chinese lunar dates alongside Gregorian dates
+
 # ── Hooks ─────────────────────────────────────────────────────────────────────
 
 [hooks]

@@ -1391,6 +1391,7 @@ struct ControlCenterConfig {
 
   struct CalendarTabConfig {
     bool showEventsCard = true;
+    bool showLunarCalendar = true;
     bool operator==(const CalendarTabConfig&) const = default;
   };
 

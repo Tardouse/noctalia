@@ -470,6 +470,7 @@ namespace noctalia::config::schema {
     const Schema<ControlCenterConfig::CalendarTabConfig>& calendarTabSchema() {
       static const Schema<ControlCenterConfig::CalendarTabConfig> s = {
           field(&ControlCenterConfig::CalendarTabConfig::showEventsCard, "show_events_card"),
+          field(&ControlCenterConfig::CalendarTabConfig::showLunarCalendar, "show_lunar_calendar"),
       };
       return s;
     }

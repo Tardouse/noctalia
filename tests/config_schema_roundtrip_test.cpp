@@ -379,6 +379,7 @@ location = "https://example.invalid/bad"
     c.controlCenter.sidebarMode = ControlCenterSidebarMode::Full;
     c.controlCenter.sidebarSectionMode = ControlCenterSidebarMode::None;
     c.controlCenter.calendarTab.showEventsCard = false;
+    c.controlCenter.calendarTab.showLunarCalendar = false;
     c.controlCenter.shortcuts = {{"wifi"}, {"bluetooth"}};
     c.calendar.enabled = true;
     c.calendar.refreshMinutes = 30;

@@ -12,6 +12,7 @@
 #include "shell/control_center/tab.h"
 #include "shell/panel/panel_button_style.h"
 #include "shell/panel/panel_manager.h"
+#include "time/chinese_lunar.h"
 #include "time/time_format.h"
 #include "ui/builders.h"
 #include "ui/controls/button.h"
@@ -95,7 +96,24 @@ namespace {
 
   std::string formatShellDate(const ConfigService* config) {
     const char* format = config != nullptr ? config->config().shell.dateFormat.c_str() : "%A, %x";
-    return formatLocalTime(format);
+    std::string result = formatLocalTime(format);
+    if (config != nullptr && !config->config().controlCenter.calendarTab.showLunarCalendar) {
+      return result;
+    }
+
+    const std::time_t nowTime = std::time(nullptr);
+    std::tm localTm{};
+    localtime_r(&nowTime, &localTm);
+    const auto lunar = chineseLunarFromGregorian(
+        localTm.tm_year + 1900, static_cast<unsigned>(localTm.tm_mon + 1), static_cast<unsigned>(localTm.tm_mday)
+    );
+    if (lunar.has_value()) {
+      const std::string lunarText = formatChineseLunarDate(*lunar);
+      if (!lunarText.empty()) {
+        result += " · " + lunarText;
+      }
+    }
+    return result;
   }
 
   // YYYYMMDD integer key for a local calendar date, for cheap day-range comparisons.
@@ -348,13 +366,20 @@ void CalendarTab::doLayout(Renderer& renderer, float contentWidth, float bodyHei
   const bool displayChanged = state.displayYear != m_lastDisplayYear || state.displayMonth != m_lastDisplayMonth;
   const bool todayChanged =
       state.currentYear != m_lastCurrentYear || state.currentMonth != m_lastCurrentMonth || state.today != m_lastToday;
+  const bool showLunarCalendar = m_config == nullptr || m_config->config().controlCenter.calendarTab.showLunarCalendar;
+  const bool lunarVisibilityChanged = static_cast<int>(showLunarCalendar) != m_lastShowLunarCalendar;
 
   if (m_monthSlideAnimId != 0 && !m_startMonthSlideIn) {
     m_rootLayout->layout(renderer);
     return;
   }
 
-  if (!sizeChanged && !displayChanged && !todayChanged && !m_eventsDirty && !m_startMonthSlideIn) {
+  if (!sizeChanged
+      && !displayChanged
+      && !todayChanged
+      && !lunarVisibilityChanged
+      && !m_eventsDirty
+      && !m_startMonthSlideIn) {
     return;
   }
   m_eventsDirty = false;
@@ -366,6 +391,7 @@ void CalendarTab::doLayout(Renderer& renderer, float contentWidth, float bodyHei
   m_lastCurrentYear = state.currentYear;
   m_lastCurrentMonth = state.currentMonth;
   m_lastToday = state.today;
+  m_lastShowLunarCalendar = static_cast<int>(showLunarCalendar);
 
   rebuild();
   if (m_grid != nullptr) {
@@ -437,6 +463,7 @@ void CalendarTab::onClose() {
   m_lastCurrentYear = std::numeric_limits<int>::min();
   m_lastCurrentMonth = -1;
   m_lastToday = -1;
+  m_lastShowLunarCalendar = -1;
 }
 
 void CalendarTab::changeMonthBy(int delta) {
@@ -664,6 +691,7 @@ void CalendarTab::rebuild() {
   const int monthDays = daysInMonth(year, month);
   const int nextMonth = month == 11 ? 0 : month + 1;
   const int nextMonthYear = month == 11 ? year + 1 : year;
+  const bool showLunarCalendar = m_config == nullptr || m_config->config().controlCenter.calendarTab.showLunarCalendar;
 
   // Indicator dot colors per day of the displayed month (capped at 3 per day).
   std::array<std::vector<ColorSpec>, 32> monthDots;
@@ -723,6 +751,8 @@ void CalendarTab::rebuild() {
     int cellDay = 0;
     int cellMonthShift = 0;
     bool inMonth = false;
+    bool selected = false;
+    bool today = false;
 
     const Button::ButtonPalette mutedDayPalette = [] {
       Button::ButtonPalette ghostPalette = Button::defaultPalette(ButtonVariant::Ghost);
@@ -749,12 +779,12 @@ void CalendarTab::rebuild() {
       cellDay = day;
       inMonth = true;
       dayButton->setText(std::to_string(day));
-      const bool selected = m_selectedYear == year && m_selectedMonth == month && m_selectedDay == day;
+      selected = m_selectedYear == year && m_selectedMonth == month && m_selectedDay == day;
       if (selected) {
         dayButton->setVariant(ButtonVariant::Primary);
       } else {
-        const bool isToday = state.isCurrentMonth && day == state.today;
-        if (isToday) {
+        today = state.isCurrentMonth && day == state.today;
+        if (today) {
           Button::ButtonPalette currentDayButtonPalette = Button::defaultPalette(ButtonVariant::Ghost);
           currentDayButtonPalette.normal.label = colorSpecFromRole(ColorRole::Primary);
           dayButton->setCustomPalette(currentDayButtonPalette);
@@ -762,6 +792,36 @@ void CalendarTab::rebuild() {
         dayButton->label()->setFontWeight(FontWeight::Bold);
       }
       ++day;
+    }
+
+    if (showLunarCalendar) {
+      const auto lunar =
+          chineseLunarFromGregorian(cellYear, static_cast<unsigned>(cellMonth + 1), static_cast<unsigned>(cellDay));
+      if (lunar.has_value()) {
+        const std::string lunarCellText = formatChineseLunarCell(*lunar);
+        const std::string lunarFullText = formatChineseLunarDate(*lunar);
+        if (!lunarCellText.empty()) {
+          dayButton->setDirection(FlexDirection::Vertical);
+          dayButton->setAlign(FlexAlign::Center);
+          dayButton->setJustify(FlexJustify::Center);
+          dayButton->setGap(0.0f);
+          dayButton->addChild(
+              ui::label({
+                  .text = lunarCellText,
+                  .fontSize = Style::fontSizeCaption * 0.78f * scale,
+                  .color = selected
+                      ? colorSpecFromRole(ColorRole::OnPrimary, 0.78f)
+                      : colorSpecFromRole(
+                            today ? ColorRole::Primary : ColorRole::OnSurfaceVariant, inMonth ? 0.82f : 0.52f
+                        ),
+                  .maxLines = 1,
+              })
+          );
+        }
+        if (!lunarFullText.empty()) {
+          dayButton->setTooltip(lunarFullText);
+        }
+      }
     }
 
     auto selectDay = [this, cellYear, cellMonth, cellDay, cellMonthShift]() {
