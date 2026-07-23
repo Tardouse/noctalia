@@ -56,6 +56,17 @@ environment with fewer moving parts and a consistent UI.
 
 To understand the values and philosophy guiding the project, read our [ethos](https://noctalia.dev/ethos).
 
+## Changes in This Fork
+
+This fork tracks Noctalia v5 and adds the following changes:
+
+- **Chinese lunar calendar:** Gregorian dates in the Control Center calendar now include their corresponding Chinese
+  lunar dates. The feature is enabled by default and can be controlled with
+  `control_center.calendar.show_lunar_calendar`.
+- **QWeather integration:** The weather service now uses [QWeather](https://www.qweather.com/) instead of Open-Meteo.
+  Weather data requires the dedicated API URL and API key shown in your QWeather console. Enter them in
+  **Settings → Location → Weather**, or set `weather.url` and `weather.key` in `config.toml`.
+
 ## What It Includes
 
 - Multi-monitor bars with configurable widgets, taskbar, workspaces, system tray, media, network, battery, brightness,
@@ -218,6 +229,24 @@ and point Meson at it (e.g. `CXX=g++-13 just configure`).
 ## Building and installing
 
 Requires [just](https://github.com/casey/just) and [meson](https://mesonbuild.com/).
+
+### Arch Linux package
+
+The repository includes a `PKGBUILD` that tracks this fork's `main` branch. From a checkout of this repository, build
+and install it with:
+
+```sh
+makepkg -si
+```
+
+To update an existing installation later:
+
+```sh
+git pull
+makepkg -si
+```
+
+The package is installed as `noctalia-git` and conflicts with other `noctalia`/`noctalia-bin` packages.
 
 #### Release build
 

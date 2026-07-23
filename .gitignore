@@ -3,6 +3,13 @@ build*/
 cmake-build-*/
 compile_commands.json
 
+# makepkg
+/noctalia/
+/pkg/
+/src/build/
+/src/noctalia/
+/*.pkg.tar.*
+
 # Python cache
 __pycache__
 
